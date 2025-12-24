@@ -9,6 +9,8 @@ import db from '../models/index.js';
 import tableRoutes from '../routes/table.routes.js'; 
 import menuRoutes from '../routes/menu.routes.js'; 
 import menuItemPhotoRoutes from '../routes/menuItemPhoto.routes.js'; 
+import guestMenuRoutes from "../routes/guestMenu.routes.js"
+import verifyQRTokenMiddleware from '../middlewares/verifyQRToken.middleware.js';
 
 dotenv.config();
 
@@ -23,6 +25,9 @@ app.use(express.json());
 app.use('/api/admin/tables', tableRoutes);
 app.use('/api/admin/menu', menuRoutes);
 app.use('/api/admin/menu', menuItemPhotoRoutes); 
+
+app.use('/api/menu', verifyQRTokenMiddleware);
+app.use('/api/menu', guestMenuRoutes);
 
 // Test routes
 app.get("/connected", (req, res) => {

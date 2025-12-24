@@ -3,7 +3,6 @@ import * as guestService from "../services/guest.service.js";
 const getGuestMenu = async (req, res) => {
 	try {
 		const {
-			table,
 			q,
 			categoryId,
 			sort,
@@ -11,23 +10,6 @@ const getGuestMenu = async (req, res) => {
 			page = 1,
 			limit = 10,
 		} = req.query;
-
-		if (!table) {
-			return res.status(400).json({
-				success: false,
-				message: "table is required",
-			});
-		}
-
-		if (table) {
-			const foundTable = await guestService.getTableById(table);
-			if (!foundTable) {
-				return res.status(404).json({
-					success: false,
-					message: "Table not found",
-				});
-			}
-		}
 
 		const result = await guestService.getGuestMenu({
 			search: q,

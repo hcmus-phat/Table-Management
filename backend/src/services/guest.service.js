@@ -6,7 +6,6 @@ import ModifierGroup from "../models/modifierGroup.js";
 import ModifierOption from "../models/modifierOption.js";
 import MenuItemModifierGroup from "../models/menuItemModifierGroup.js";
 import Table from "../models/table.js";
-import Restaurant from "../models/restaurant.js";
 
 const getTableById = async (tableId) => {
 	return await Table.findByPk(tableId);
