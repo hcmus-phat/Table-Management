@@ -1,4 +1,4 @@
-import Restaurant from '../models/restaurant.js';
+
 import MenuCategory from '../models/menuCategory.js';
 import MenuItem from '../models/menuItem.js';
 
@@ -73,10 +73,9 @@ export const updateCategory = [
     try {
       const validatedData = req.validatedData;
       const { id } = req.params;
-      const {restaurant_id} = req.params
-      
+
       // Validate business logic
-      const validationErrors = await CategoryService.validateUpdateData(id, validatedData, restaurant_id);
+      const validationErrors = await CategoryService.validateUpdateData(id, validatedData);
       if (validationErrors.length > 0) {
         return res.status(400).json({
           success: false,
@@ -86,7 +85,7 @@ export const updateCategory = [
       }
       
       // Cập nhật qua Service
-      const updatedCategory = await CategoryService.update(id, validatedData, restaurant_id);
+      const updatedCategory = await CategoryService.update(id, validatedData);
       
       res.status(200).json({
         success: true,
@@ -131,15 +130,12 @@ export const updateCategoryStatus = [
     try {
       const { status } = req.validatedData;
       const { id } = req.params;
-      const { restaurant_id } = req.params;
-      
       console.log(`🔄 Updating status of category ${id} to "${status}"`);
       
       // Validate business logic
       const validationErrors = await CategoryService.validateStatusUpdate(
         id, 
         status, 
-        restaurant_id
       );
       
       if (validationErrors.length > 0) {
@@ -151,7 +147,7 @@ export const updateCategoryStatus = [
       }
       
       // Update status qua Service
-      const result = await CategoryService.updateStatus(id, status, restaurant_id);
+      const result = await CategoryService.updateStatus(id, status);
       
       res.status(200).json({
         success: true,
@@ -188,13 +184,12 @@ export const updateCategoryStatus = [
 export const deleteCategory = [
     async (req, res) => {
       try {
-        const { id, restaurant_id } = req.params;
+        const { id} = req.params;
         
         // 1. Tìm category với điều kiện restaurantId
         const category = await MenuCategory.findOne({
           where: { 
             id, 
-            restaurant_id,
             status : 'active'
           }
         });

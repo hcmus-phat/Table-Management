@@ -319,7 +319,6 @@ export const verifyQRToken = async (req, res) => {
 				},
 				token_info: {
 					created_at: table.qr_token_created_at,
-					restaurant_id: decoded.restaurantId,
 				},
 			},
 		});

@@ -101,10 +101,9 @@ export const updateItem = [
         try {
         const validatedData = req.validatedData;
         const { id } = req.params;
-        const {restaurant_id} = req.params
         
         // Validate business logic
-        const validationErrors = await ItemService.validateUpdateData(id, validatedData, restaurant_id);
+        const validationErrors = await ItemService.validateUpdateData(id, validatedData);
         if (validationErrors.length > 0) {
             return res.status(400).json({
             success: false,
@@ -114,7 +113,7 @@ export const updateItem = [
         }
         
         // Cập nhật qua Service
-        const updatedItem = await ItemService.update(id, validatedData, restaurant_id);
+        const updatedItem = await ItemService.update(id, validatedData);
         
         res.status(200).json({
             success: true,

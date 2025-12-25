@@ -1,7 +1,6 @@
 import sequelize from '../config/database.js'; // Connection
 
 // 1. Import TẤT CẢ các model bạn đang có trong folder
-import Restaurant from './restaurant.js';
 import MenuCategory from './menuCategory.js';
 import MenuItem from './menuItem.js';
 import MenuItemPhoto from './menuItemPhoto.js';
@@ -13,7 +12,6 @@ import Table from './table.js';
 // 2. Gom lại vào object db
 const db = {
   sequelize, // Instance kết nối
-  Restaurant,
   MenuCategory,
   MenuItem,
   MenuItemPhoto,

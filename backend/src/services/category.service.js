@@ -1,6 +1,5 @@
 // src/services/categoryService.js
 import MenuCategory from '../models/menuCategory.js';
-import Restaurant from '../models/restaurant.js';
 import MenuItem from '../models/menuItem.js';
 import { Op } from 'sequelize';
 
@@ -60,9 +59,6 @@ export class CategoryService {
     try {
       // 1. Kiểm tra category tồn tại
       const where = { id: categoryId };
-      if (restaurantId) {
-        where.restaurant_id = restaurantId;
-      }
       
       const category = await MenuCategory.findOne({ where });
       
@@ -75,7 +71,6 @@ export class CategoryService {
       if (data.name !== undefined && data.name.trim() !== category.name) {
         const duplicateCategory = await MenuCategory.findOne({
           where: {
-            restaurant_id: category.restaurant_id,
             name: data.name.trim(),
             id: { [Op.ne]: categoryId }
           }
@@ -106,20 +101,9 @@ export class CategoryService {
       if (data.display_order !== undefined && data.display_order !== category.display_order) {
         // Có thể kiểm tra display_order có hợp lệ trong context của restaurant không
         // Ví dụ: không cho phép vượt quá số lượng category
-        const maxDisplayOrder = await MenuCategory.max('display_order', {
-          where: { restaurant_id: category.restaurant_id }
-        });
         
         if (data.display_order > maxDisplayOrder + 10) {
           errors.push(`Display order is too high. Maximum suggested: ${maxDisplayOrder + 1}`);
-        }
-      }
-      
-      // 5. Kiểm tra restaurant có active không (nếu update status category)
-      if (data.status === 'active' && category.status === 'inactive') {
-        const restaurant = await Restaurant.findByPk(category.restaurant_id);
-        if (restaurant && restaurant.status !== 'active') {
-          errors.push('Cannot activate category because the restaurant is not active');
         }
       }
       
@@ -137,9 +121,6 @@ export class CategoryService {
     
     // Tìm category
     const where = { id: categoryId };
-    if (restaurantId) {
-      where.restaurant_id = restaurantId;
-    }
     
     const category = await MenuCategory.findOne({ where });
     if (!category) {
@@ -223,10 +204,6 @@ export class CategoryService {
     try {
       // Tìm category
       const where = { id: categoryId };
-      if (restaurantId) {
-        where.restaurant_id = restaurantId;
-      }
-      
       const category = await MenuCategory.findOne({ where });
       
       if (!category) {
@@ -258,14 +235,7 @@ export class CategoryService {
         }
       }
       
-      // Nếu activating category
-      if (newStatus === 'active' && currentStatus === 'inactive') {
-        // Kiểm tra restaurant có active không
-        const restaurant = await Restaurant.findByPk(category.restaurant_id);
-        if (restaurant && restaurant.status !== 'active') {
-          errors.push('Cannot activate category because the restaurant is not active');
-        }
-      }
+    
       
     } catch (error) {
       errors.push(`Validation error: ${error.message}`);
@@ -285,9 +255,6 @@ export class CategoryService {
     
     // Tìm category
     const where = { id: categoryId };
-    if (restaurantId) {
-      where.restaurant_id = restaurantId;
-    }
     
     const category = await MenuCategory.findOne({ where });
     if (!category) {

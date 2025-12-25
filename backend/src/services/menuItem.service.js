@@ -1,5 +1,4 @@
 import MenuCategory from '../models/menuCategory.js';
-import Restaurant from '../models/restaurant.js';
 import MenuItem from '../models/menuItem.js';
 import { Op } from 'sequelize';
 
@@ -20,7 +19,6 @@ export class ItemService{
         }
         
         return await MenuItem.create({
-            restaurant_id: data.restaurant_id,
             category_id: data.category_id,
             name: data.name,
             description: data.description || null,
@@ -34,12 +32,9 @@ export class ItemService{
 
     //CẬP NHẬT ITEM
 
-    static async update(id, data, restaurant_id = null) {
+    static async update(id, data) {
         // 1. Tìm item cần cập nhật
         const where = { id };
-        if (restaurant_id) {
-            where.restaurant_id = restaurant_id;
-        }
         
         const item = await MenuItem.findOne({ where });
         
@@ -167,16 +162,14 @@ export class ItemService{
 
 
 
-    static async validateUpdateData(itemId, data, restaurant_id = null) {
+    static async validateUpdateData(itemId, data) {
         const errors = this.validateItemData(data, true); // isUpdate = true
         
         // Có thể thêm logic validate đặc biệt cho update
         // Ví dụ: không cho đổi status thành sold_out nếu không có inventory
         if (data.status === 'sold_out') {
             const where = { id: itemId };
-            if (restaurant_id) {
-                where.restaurant_id = restaurant_id;
-            }
+        
             
             const item = await MenuItem.findOne({ where });
             

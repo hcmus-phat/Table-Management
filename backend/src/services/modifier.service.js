@@ -9,8 +9,7 @@ export class ModifierService {
 		//Check for existed group
 		const existingGroup = await ModifierGroup.findOne({
 			where: {
-				name: data.name,
-				restaurant_id: data.restaurant_id, //different restaurants
+				name: data.name
 			},
 		});
 		if (existingGroup) {
@@ -19,7 +18,6 @@ export class ModifierService {
 
 		//Create group
 		return await ModifierGroup.create({
-			restaurant_id: data.restaurant_id,
 			name: data.name,
 			selection_type: data.selection_type,
 			is_required: data.is_required,
