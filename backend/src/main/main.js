@@ -6,7 +6,8 @@ import dotenv from 'dotenv';
 // Import db từ index (đã bao gồm setup associations)
 import db from '../models/index.js'; 
 
-import tableRoutes from '../routes/table.routes.js'; 
+import tableAdminRoutes from '../routes/tableAdmin.routes.js'; 
+import tablePublicRoutes from '../routes/tablePublic.routes.js';
 import menuRoutes from '../routes/menu.routes.js'; 
 import menuItemPhotoRoutes from '../routes/menuItemPhoto.routes.js'; 
 import guestMenuRoutes from "../routes/guestMenu.routes.js"
@@ -22,7 +23,8 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
-app.use('/api/admin/tables', tableRoutes);
+app.use('/api/menu', tablePublicRoutes);
+app.use('/api/admin/tables', tableAdminRoutes);
 app.use('/api/admin/menu', menuRoutes);
 app.use('/api/admin/menu', menuItemPhotoRoutes); 
 

@@ -12,14 +12,16 @@ export class QRService {
 	/**
 	 * Tạo signed token cho table
 	 * @param {string} tableId - ID của bàn
+	 * @param {string} restaurantId - ID của nhà hàng (optional)
 	 * @returns {string} - JWT token
 	 */
-	static generateToken(tableId) {
+	static generateToken(tableId, restaurantId = "default-restaurant") {
 		const secret = process.env.JWT_SECRET || "your-secret-key-change-this";
 		const expiresIn = process.env.QR_TOKEN_EXPIRES || "365d"; // Token có thể dùng lâu dài
 
 		const payload = {
 			tableId,
+			restaurantId,
 			timestamp: Date.now(),
 			type: "qr_table_access",
 		};
@@ -49,8 +51,8 @@ export class QRService {
 	 * @returns {string} - URL để encode vào QR code
 	 */
 	static generateQRUrl(tableId, token) {
-		const baseUrl = process.env.BACKEND_URL || "http://localhost:5000";
-		return `${baseUrl}/api/menu?table=${tableId}&token=${token}`;
+		const baseUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+		return `${baseUrl}/#/menu?table=${tableId}&token=${token}`;
 		}
 
 	/**

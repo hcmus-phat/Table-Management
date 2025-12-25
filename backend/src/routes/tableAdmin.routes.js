@@ -12,13 +12,14 @@ import {
   bulkRegenerateQRCodes,
   downloadQRCode,
   downloadAllQRCodes,
-  verifyQRToken,
   getQRPreview
 } from '../controllers/qr.controller.js';
 
 const router = express.Router();
 
 // ============= Table CRUD Routes =============
+
+
 // GET /api/tables
 router.get('/', getAllTable);
 
@@ -52,10 +53,6 @@ router.get('/qr/download-all', downloadAllQRCodes);
 
 // GET /api/admin/tables/:id/qr/preview - Get QR code preview
 router.get('/:id/qr/preview', getQRPreview);
-
-// ============= Public Routes (Customer) =============
-// GET /api/menu - Verify QR token and load menu
-router.get('/menu', verifyQRToken);
 
 
 export default router;
