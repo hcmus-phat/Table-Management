@@ -1,45 +1,55 @@
+// src/main.js
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import sequelize from '../config/database.js';
-import tableRoutes from '../routes/table.routes.js'; 
 
-dotenv.config(); //Load biến môi trường từ .env
+// Import db từ index (đã bao gồm setup associations)
+import db from '../models/index.js'; 
+
+import tableRoutes from '../routes/table.routes.js'; 
+import menuRoutes from '../routes/menu.routes.js'; 
+import menuItemPhotoRoutes from '../routes/menuItemPhoto.routes.js'; 
+import guestMenuRoutes from "../routes/guestMenu.routes.js"
+import verifyQRTokenMiddleware from '../middlewares/verifyQRToken.middleware.js';
+
+dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000; 
+const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
 // Routes
-app.use('/api', tableRoutes); // Main API routes (includes /api/menu for public access)
-app.use('/api/admin', tableRoutes); // Admin routes
+app.use('/api/admin/tables', tableRoutes);
+app.use('/api/admin/menu', menuRoutes);
+app.use('/api/admin/menu', menuItemPhotoRoutes); 
 
-// Hàm check xem kết nối database có thành công không (chỉ dùng để test thôi nha anh em)
-app.get('/connected', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    database: 'Connected successfully',
-    timestamp: new Date().toISOString()
-  });
+app.use('/api/menu', verifyQRTokenMiddleware);
+app.use('/api/menu', guestMenuRoutes);
+
+// Test routes
+app.get("/connected", (req, res) => {
+	res.json({
+		status: "OK",
+		database: "Connected successfully",
+		timestamp: new Date().toISOString(),
+	});
 });
 
 // Start server
 async function startServer() {
   try {
-    await sequelize.authenticate();
+    await db.sequelize.authenticate();
     console.log('>>> Database connected successfully');
     
-    await sequelize.sync({ alter: true });
-    console.log('>>> Database synced');
+    // Sync database
+    await db.sequelize.sync({ alter: true });
+    console.log('>>> Database synced & Associations setup automatically');
     
     app.listen(PORT, () => {
-      console.log(`Server running at http://localhost:${PORT}`);
-      console.log(`Health check: http://localhost:${PORT}/health`);
-      console.log(`Connected check: http://localhost:${PORT}/connected`);
-      console.log(`Tables API: http://localhost:${PORT}/api/admin/tables`);
+      console.log(`>>> Server running at http://localhost:${PORT}`);
     });
     
   } catch (error) {
