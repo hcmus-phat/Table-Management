@@ -216,7 +216,7 @@ const MenuPage = () => {
 	);
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50">
+		<div className="min-h-screen bg-white">
 			<MenuHeader
 				tableNumber={tableInfo.table?.table_number}
 				cartItemCount={cart.length}
