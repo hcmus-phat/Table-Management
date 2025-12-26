@@ -7,11 +7,8 @@ import ModifierOption from "../models/modifierOption.js";
 import MenuItemModifierGroup from "../models/menuItemModifierGroup.js";
 import Table from "../models/table.js";
 
-const getTableById = async (tableId) => {
-	return await Table.findByPk(tableId);
-};
-
 const getGuestMenu = async ({
+	tableId,
 	search,
 	categoryId,
 	sort,
@@ -19,6 +16,8 @@ const getGuestMenu = async ({
 	page,
 	limit,
 }) => {
+
+	const table = await Table.findByPk(tableId)
 	// 1. Lấy categories (active)
 	const categories = await MenuCategory.findAll({
 		where: {
@@ -124,6 +123,7 @@ const getGuestMenu = async ({
 	const totalPages = Math.ceil(count / limit);
 
 	return {
+		table,
 		categories,
 		items: formattedItems,
 		pagination: {
@@ -137,4 +137,4 @@ const getGuestMenu = async ({
 	};
 };
 
-export { getTableById, getGuestMenu };
+export { getGuestMenu };

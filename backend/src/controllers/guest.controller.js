@@ -12,6 +12,7 @@ const getGuestMenu = async (req, res) => {
 		} = req.query;
 
 		const result = await guestService.getGuestMenu({
+			tableId: req.tableId,
 			search: q,
 			categoryId,
 			sort,

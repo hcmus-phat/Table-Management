@@ -1,14 +1,13 @@
 // src/services/menuService.js
-//import { menuApi } from '../config/api.js';
+import { adminApi, publicApi } from '../config/api.js';
 
 const menuService = {
   // ============= Category Methods =============
   // Get all categories with items
-  getCategories: async (restaurantId) => {
+  getCategories: async () => {
     try {
-      const response = await menuApi.get('/menu/categories', {
+      const response = await adminApi.get('/menu/categories', {
         params: { 
-          restaurant_id: restaurantId,
           include_items: true 
         }
       });
@@ -22,7 +21,7 @@ const menuService = {
   // Create category
   createCategory: async (categoryData) => {
     try {
-      const response = await menuApi.post('/menu/categories', categoryData);
+      const response = await adminApi.post('/menu/categories', categoryData);
       return response.data;
     } catch (error) {
       console.error('Error creating category:', error);
@@ -44,7 +43,7 @@ const menuService = {
   // Update category status
   updateCategoryStatus: async (id, status) => {
     try {
-      const response = await menuApi.patch(`/menu/categories/${id}/status`, { status });
+      const response = await adminApi.patch(`/menu/categories/${id}/status`, { status });
       return response.data;
     } catch (error) {
       console.error('Error updating category status:', error);

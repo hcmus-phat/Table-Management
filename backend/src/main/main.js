@@ -23,7 +23,7 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
-app.use('/api/menu', tablePublicRoutes);
+// app.use('/api/menu', tablePublicRoutes);
 app.use('/api/admin/tables', tableAdminRoutes);
 app.use('/api/admin/menu', menuRoutes);
 app.use('/api/admin/menu', menuItemPhotoRoutes); 
