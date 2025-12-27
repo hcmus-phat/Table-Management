@@ -275,7 +275,6 @@ const MenuPage = () => {
 											<MenuItemCard
 												key={item.id}
 												item={item}
-												onAddToCart={addToCart}
 												onCustomize={handleCustomize}
 											/>
 										))}
