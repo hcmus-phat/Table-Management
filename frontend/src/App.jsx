@@ -1,7 +1,7 @@
 // App.jsx
 import React from "react";
 import {
-	HashRouter as Router,  
+	HashRouter as Router,
 	Routes,
 	Route,
 	Navigate,
@@ -11,6 +11,12 @@ import TableList from "./components/tables/TableList";
 import TableForm from "./components/tables/TableForm";
 import QRCodePage from "./components/tables/QRCodePage";
 import MenuPage from "./components/menu/MenuPage";
+import {
+	CategoryList,
+	MenuItemList,
+	MenuItemForm,
+	ModifierGroupList,
+} from "./components/admin/menu";
 import "./App.css";
 
 function App() {
@@ -33,6 +39,28 @@ function App() {
 					<Route path="/tables/new" element={<TableForm />} />
 					<Route path="/tables/:id" element={<TableForm />} />
 					<Route path="/tables/:id/qr" element={<QRCodePage />} />
+
+					{/* Menu Admin routes */}
+					<Route
+						path="/admin/menu/categories"
+						element={<CategoryList />}
+					/>
+					<Route
+						path="/admin/menu/items"
+						element={<MenuItemList />}
+					/>
+					<Route
+						path="/admin/menu/items/new"
+						element={<MenuItemForm />}
+					/>
+					<Route
+						path="/admin/menu/items/:id"
+						element={<MenuItemForm />}
+					/>
+					<Route
+						path="/admin/menu/modifiers"
+						element={<ModifierGroupList />}
+					/>
 
 					{/* 404 route */}
 					<Route

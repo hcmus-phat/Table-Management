@@ -3,6 +3,7 @@ import React, { useState } from "react";
 const ModifierModalContent = ({ item, onClose, onAddToCart }) => {
 	const [selectedModifiers, setSelectedModifiers] = useState({});
 	const [quantity, setQuantity] = useState(1);
+	const [note, setNote] = useState("");
 
 	const modifierGroups = item.modifierGroups || [];
 
@@ -89,7 +90,7 @@ const ModifierModalContent = ({ item, onClose, onAddToCart }) => {
 			0
 		);
 
-		onAddToCart(item, modifiersArray, quantity, modifiersTotalPrice);
+		onAddToCart(item, modifiersArray, quantity, modifiersTotalPrice, note);
 		onClose();
 	};
 
@@ -218,6 +219,24 @@ const ModifierModalContent = ({ item, onClose, onAddToCart }) => {
 
 				{/* Footer with quantity and add to cart */}
 				<div className="p-4 border-t border-gray-200 bg-gray-50">
+					{/* Special instructions */}
+					<div className="mb-4">
+						<label className="block font-medium text-gray-900 mb-2">
+							📝 Special Instructions (optional)
+						</label>
+						<textarea
+							value={note}
+							onChange={(e) => setNote(e.target.value)}
+							placeholder="E.g., No onions, Extra spicy, No ice..."
+							className="w-full p-3 border border-gray-300 rounded-lg text-sm resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+							rows={2}
+							maxLength={200}
+						/>
+						<p className="text-xs text-gray-500 mt-1 text-right">
+							{note.length}/200
+						</p>
+					</div>
+
 					{/* Quantity selector */}
 					<div className="flex items-center justify-between mb-4">
 						<span className="font-medium text-gray-900">

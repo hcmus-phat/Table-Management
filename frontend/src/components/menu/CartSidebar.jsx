@@ -9,6 +9,7 @@ const CartSidebar = ({
 	onRemoveItem,
 	onClearCart,
 	onPlaceOrder,
+	onUpdateNote,
 }) => {
 	if (!isOpen || cart.length === 0) return null;
 
@@ -72,6 +73,12 @@ const CartSidebar = ({
 												))}
 											</div>
 										)}
+									{/* Special instructions note */}
+									{item.note && (
+										<p className="text-xs text-amber-600 italic mt-1">
+											📝 {item.note}
+										</p>
+									)}
 									<p className="text-sm text-gray-600">
 										${item.unitPrice.toFixed(2)} each
 									</p>

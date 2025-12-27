@@ -1,4 +1,6 @@
 import { ModifierService } from "../services/modifier.service.js";
+import ModifierGroup from "../models/modifierGroup.js";
+import ModifierOption from "../models/modifierOption.js";
 import {
 	createModifierGroupSchema,
 	updateModifierGroupSchema,
@@ -10,6 +12,72 @@ import {
 import { attachModifierGroupsSchema } from "../validators/menuItemModifierGroup.validator.js";
 
 import { validate } from "../middlewares/validator.js";
+
+// GET all modifier groups
+export const getAllModifierGroups = async (req, res) => {
+	try {
+		const groups = await ModifierGroup.findAll({
+			include: [
+				{
+					model: ModifierOption,
+					as: "options",
+					required: false,
+				},
+			],
+			order: [
+				["display_order", "ASC"],
+				["created_at", "DESC"],
+			],
+		});
+
+		res.json({
+			success: true,
+			message: "Get all modifier groups",
+			data: groups,
+		});
+	} catch (error) {
+		console.error("Error getting modifier groups:", error);
+		res.status(500).json({
+			success: false,
+			error: error.message,
+		});
+	}
+};
+
+// GET modifier group by ID
+export const getModifierGroupById = async (req, res) => {
+	try {
+		const { id } = req.params;
+		const group = await ModifierGroup.findByPk(id, {
+			include: [
+				{
+					model: ModifierOption,
+					as: "options",
+					required: false,
+				},
+			],
+		});
+
+		if (!group) {
+			return res.status(404).json({
+				success: false,
+				message: "Modifier group not found",
+			});
+		}
+
+		res.json({
+			success: true,
+			message: `Get modifier group by ID: ${id}`,
+			data: group,
+		});
+	} catch (error) {
+		console.error("Error getting modifier group:", error);
+		res.status(500).json({
+			success: false,
+			error: error.message,
+		});
+	}
+};
 
 export const createModifierGroup = [
 	validate(createModifierGroupSchema),
@@ -122,3 +190,65 @@ export const attachModifierGroup = [
 		}
 	},
 ];
+
+// DELETE modifier group
+export const deleteModifierGroup = async (req, res) => {
+	try {
+		const { id } = req.params;
+
+		const group = await ModifierGroup.findByPk(id);
+		if (!group) {
+			return res.status(404).json({
+				success: false,
+				message: "Modifier group not found",
+			});
+		}
+
+		// Delete all options first
+		await ModifierOption.destroy({
+			where: { group_id: id },
+		});
+
+		// Delete the group
+		await group.destroy();
+
+		res.json({
+			success: true,
+			message: "Modifier group deleted successfully",
+		});
+	} catch (error) {
+		console.error("Error deleting modifier group:", error);
+		res.status(500).json({
+			success: false,
+			error: error.message,
+		});
+	}
+};
+
+// DELETE modifier option
+export const deleteModifierOption = async (req, res) => {
+	try {
+		const { id } = req.params;
+
+		const option = await ModifierOption.findByPk(id);
+		if (!option) {
+			return res.status(404).json({
+				success: false,
+				message: "Modifier option not found",
+			});
+		}
+
+		await option.destroy();
+
+		res.json({
+			success: true,
+			message: "Modifier option deleted successfully",
+		});
+	} catch (error) {
+		console.error("Error deleting modifier option:", error);
+		res.status(500).json({
+			success: false,
+			error: error.message,
+		});
+	}
+};

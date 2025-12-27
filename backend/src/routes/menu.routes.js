@@ -1,75 +1,91 @@
-import express from 'express';
-import { 
-  getAllCategory, 
-  createCategory, 
-  updateCategory,
-  updateCategoryStatus,
-  deleteCategory
-} from '../controllers/category.controller.js';
+import express from "express";
 import {
-  getAllItem,
-  getItemById,
-  createItem,
-  updateItem,
-  deleteItem,
-} from '../controllers/item.controller.js';
+	getAllCategory,
+	createCategory,
+	updateCategory,
+	updateCategoryStatus,
+	deleteCategory,
+} from "../controllers/category.controller.js";
+import {
+	getAllItem,
+	getItemById,
+	createItem,
+	updateItem,
+	deleteItem,
+} from "../controllers/item.controller.js";
 
-import { 
-  createModifierGroup,
-  updateModifierGroup,
-  createModifierOption,
-  updateModifierOption,
-  attachModifierGroup
-} from '../controllers/modifier.controller.js';
+import {
+	getAllModifierGroups,
+	getModifierGroupById,
+	createModifierGroup,
+	updateModifierGroup,
+	deleteModifierGroup,
+	createModifierOption,
+	updateModifierOption,
+	deleteModifierOption,
+	attachModifierGroup,
+} from "../controllers/modifier.controller.js";
 
 const router = express.Router();
 
 // ============= Category CRUD Routes =============
 // GET	/api/admin/menu/categories
-router.get('/categories', getAllCategory);
+router.get("/categories", getAllCategory);
 
 //POST	/api/admin/menu/categories
-router.post('/categories', createCategory);
+router.post("/categories", createCategory);
 
 //PUT	/api/admin/menu/categories/:id
-router.put('/categories/:id',   updateCategory,);
+router.put("/categories/:id", updateCategory);
 
 //PATCH	/api/admin/menu/categories/:id/status
-router.patch('/categories/:id/status', updateCategoryStatus);
+router.patch("/categories/:id/status", updateCategoryStatus);
 
 //PATCH	/api/admin/categories/:id/delete
-router.patch('/categories/:id/delete', deleteCategory);
+router.patch("/categories/:id/delete", deleteCategory);
 
 // ============= iTEM Routes =============
 // GET	/api/admin/menu/items
-router.get('/items', getAllItem);
+router.get("/items", getAllItem);
 
 //GET	/api/admin/menu/items/:id
-router.get('/items/:id', getItemById);
+router.get("/items/:id", getItemById);
 
 //POST	/api/admin/menu/items
-router.post('/items', createItem);
+router.post("/items", createItem);
 
 // PUT	/api/admin/menu/items/:id
-router.put('/items/:id', updateItem);
+router.put("/items/:id", updateItem);
 
 // DELETE	/api/admin/menu/items/:id
-router.delete('/items/:id', deleteItem);
+router.delete("/items/:id", deleteItem);
 
 // ============= Modifier Routes =============
-//POST	/api/admin/menu/modifier-groups
-router.post('/modifier-groups', createModifierGroup);
+// GET /api/admin/menu/modifier-groups
+router.get("/modifier-groups", getAllModifierGroups);
 
-// POST	/api/admin/menu/modifier-groups/:id/options
-router.post('/modifier-groups/:id/options', createModifierOption);
+// GET /api/admin/menu/modifier-groups/:id
+router.get("/modifier-groups/:id", getModifierGroupById);
+
+//POST	/api/admin/menu/modifier-groups
+router.post("/modifier-groups", createModifierGroup);
 
 //PUT	/api/admin/menu/modifier-groups/:id
-router.put('/modifier-groups/:id', updateModifierGroup);
+router.put("/modifier-groups/:id", updateModifierGroup);
+
+// DELETE /api/admin/menu/modifier-groups/:id
+router.delete("/modifier-groups/:id", deleteModifierGroup);
+
+// POST	/api/admin/menu/modifier-groups/:id/options
+router.post("/modifier-groups/:id/options", createModifierOption);
 
 //PUT	/api/admin/menu/modifier-options/:id
-router.put('/modifier-options/:id', updateModifierOption);
+router.put("/modifier-options/:id", updateModifierOption);
+
+// DELETE /api/admin/menu/modifier-options/:id
+router.delete("/modifier-options/:id", deleteModifierOption);
 
 //POST	/api/admin/menu/items/:id/modifier-groups
-router.post('/items/:id/modifier-groups', attachModifierGroup);
+router.post("/items/:id/modifier-groups", attachModifierGroup);
 
 export default router;
