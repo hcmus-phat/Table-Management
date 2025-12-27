@@ -1,4 +1,5 @@
 import MenuCategory from "../models/menuCategory.js";
+import db from '../models/index.js';
 import MenuItem from "../models/menuItem.js";
 
 import { ItemService } from "../services/menuItem.service.js";
@@ -9,12 +10,30 @@ import {
 } from "../validators/item.validator.js";
 import { validate } from "../middlewares/validator.js";
 
+const { MenuItemPhoto } = db;
+
 //LẤY TẤT CẢ ITEM
 export const getAllItem = async (req, res) => {
 	try {
-		const menuItem = await MenuItem.findAll({
-			order: [["created_at", "DESC"]],
-		});
+		// const menuItem = await MenuItem.findAll({
+		// 	order: [["created_at", "DESC"]],
+		// });
+    const menuItem = await MenuItem.findAll({
+      // 👇 QUAN TRỌNG: Vẫn phải giữ đoạn này để Frontend có ảnh mà hiển thị
+      include: [
+        {
+          model: MenuItemPhoto,
+          as: 'photos', // Alias khớp với model
+          attributes: ['id', 'url', 'is_primary']
+        },
+        {
+          model: MenuCategory,
+          as: 'category',
+          attributes: ['id', 'name']
+        }
+      ],
+      order: [["created_at", "DESC"]],
+    });
 
 		res.json({
 			success: true,

@@ -45,6 +45,7 @@ const MenuItemList = () => {
 				menuService.getAllItems(),
 				menuService.getCategories(),
 			]);
+      console.log(itemsRes.data);
 			setItems(itemsRes.data || []);
 			setCategories(categoriesRes.data || []);
 		} catch (err) {
@@ -411,12 +412,13 @@ const MenuItemList = () => {
 								<tr key={item.id} className="hover:bg-gray-50">
 									<td className="px-6 py-4 whitespace-nowrap">
 										<div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+                     
 											{item.photos &&
 											item.photos.length > 0 ? (
 												<img
 													src={
 														item.photos.find(
-															(p) => p.is_primary
+															(p) => p.is_primary || p.isPrimary
 														)?.url ||
 														item.photos[0]?.url
 													}
