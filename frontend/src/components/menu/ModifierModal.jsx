@@ -7,8 +7,30 @@ const ModifierModalContent = ({ item, onClose, onAddToCart }) => {
 
 	const modifierGroups = item.modifierGroups || [];
 
-	const handleModifierChange = (groupId, option, isChecked) => {
+	const handleModifierChange = (
+		groupId,
+		option,
+		isChecked,
+		isSingleSelect = false
+	) => {
 		setSelectedModifiers((prev) => {
+			// For single select, replace the entire selection
+			if (isSingleSelect) {
+				if (isChecked) {
+					return {
+						...prev,
+						[groupId]: [option],
+					};
+				} else {
+					// Allow deselection for single select
+					return {
+						...prev,
+						[groupId]: [],
+					};
+				}
+			}
+
+			// For multiple select
 			const groupSelections = prev[groupId] || [];
 
 			if (isChecked) {
@@ -172,7 +194,18 @@ const ModifierModalContent = ({ item, onClose, onAddToCart }) => {
 											>
 												<div className="flex items-center gap-3">
 													<input
-														type="checkbox"
+														type={
+															group.selection_type ===
+															"single"
+																? "radio"
+																: "checkbox"
+														}
+														name={
+															group.selection_type ===
+															"single"
+																? `modifier-group-${group.id}`
+																: undefined
+														}
 														checked={isOptionSelected(
 															group.id,
 															option.id
@@ -181,10 +214,18 @@ const ModifierModalContent = ({ item, onClose, onAddToCart }) => {
 															handleModifierChange(
 																group.id,
 																option,
-																e.target.checked
+																e.target
+																	.checked,
+																group.selection_type ===
+																	"single"
 															)
 														}
-														className="w-5 h-5 text-amber-600 rounded focus:ring-amber-500"
+														className={`w-5 h-5 text-amber-600 focus:ring-amber-500 ${
+															group.selection_type ===
+															"single"
+																? ""
+																: "rounded"
+														}`}
 													/>
 													<span className="text-gray-900">
 														{option.name}

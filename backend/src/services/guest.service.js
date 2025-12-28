@@ -16,8 +16,7 @@ const getGuestMenu = async ({
 	page,
 	limit,
 }) => {
-
-	const table = await Table.findByPk(tableId)
+	const table = await Table.findByPk(tableId);
 	// 1. Lấy categories (active)
 	const categories = await MenuCategory.findAll({
 		where: {
@@ -94,6 +93,7 @@ const getGuestMenu = async ({
 				attributes: [
 					"id",
 					"name",
+					"selection_type",
 					"is_required",
 					"min_selections",
 					"max_selections",

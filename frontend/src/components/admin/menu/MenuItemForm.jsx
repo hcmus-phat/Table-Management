@@ -160,10 +160,11 @@ const MenuItemForm = () => {
 				savedItem = await menuService.createItem(dataToSubmit);
 			}
 
-			// Update modifier groups if changed
-			if (savedItem.data?.id && selectedModifierGroups.length > 0) {
+			// Update modifier groups (always call to handle removal of all modifiers)
+			const itemId = savedItem.data?.id || id;
+			if (itemId) {
 				await menuService.attachModifierGroups(
-					savedItem.data.id,
+					itemId,
 					selectedModifierGroups
 				);
 			}
