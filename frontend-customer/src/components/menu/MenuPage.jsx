@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
+import Swal from 'sweetalert2'; 
 import Loading from "../common/Loading";
 import Alert from "../common/Alert";
 import tableService from "../../services/tableService";
+import CustomerService from "../../services/customerService"; 
 import MenuHeader from "./MenuHeader";
 import MenuFooter from "./MenuFooter";
 import CategoryTabs from "./CategoryTabs";
@@ -13,380 +15,288 @@ import ModifierModal from "./ModifierModal";
 import useCart from "./hooks/useCart";
 
 const MenuPage = () => {
-	const [searchParams] = useSearchParams();
-	const tableId = searchParams.get("table");
-	const token = searchParams.get("token");
-	const [loading, setLoading] = useState(true);
-	const [menuLoading, setMenuLoading] = useState(false);
-	const [error, setError] = useState(null);
-	const [menuError, setMenuError] = useState(null);
-	const [tableInfo, setTableInfo] = useState(null);
-	const [categories, setCategories] = useState([]);
-	const [activeCategory, setActiveCategory] = useState(null);
-	const [selectedItem, setSelectedItem] = useState(null); // For modifier modal
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const location = useLocation();
+    
+    const tableId = searchParams.get("table");
+    const token = searchParams.get("token");
 
-	const {
-		cart,
-		cartTotal,
-		isCartOpen,
-		setIsCartOpen,
-		addToCart,
-		removeFromCart,
-		updateQuantity,
-		clearCart,
-		getTotalItems,
-	} = useCart();
+    const [loading, setLoading] = useState(true);
+    const [menuLoading, setMenuLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [menuError, setMenuError] = useState(null);
+    const [tableInfo, setTableInfo] = useState(null);
+    const [categories, setCategories] = useState([]);
+    const [activeCategory, setActiveCategory] = useState(null);
+    const [selectedItem, setSelectedItem] = useState(null);
+    const [orderPlacing, setOrderPlacing] = useState(false);
 
-	useEffect(() => {
-		const verifyQRCode = async () => {
-			if (!tableId || !token) {
-				console.error(
-					"Missing parameters - tableId:",
-					tableId,
-					"token:",
-					token
-				);
-				setError("Invalid QR code. Missing table or token.");
-				setLoading(false);
-				return;
-			}
+    const {
+        cart,
+        cartTotal,
+        isCartOpen,
+        setIsCartOpen,
+        addToCart,
+        removeFromCart,
+        updateQuantity,
+        clearCart,
+        getTotalItems,
+    } = useCart();
 
-			try {
-				console.log("TABLE ID (from query):", tableId);
-				console.log("TOKEN (from query):", token);
-				const response = await tableService.verifyQRToken(
-					tableId,
-					token
-				);
+    const showToast = (icon, title) => {
+        Swal.fire({
+            icon,
+            title,
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 2000,
+            timerProgressBar: true
+        });
+    };
 
-				if (response.success) {
-					setTableInfo(response.data);
-				} else {
-					setError(response.message || "Invalid QR code");
-				}
-			} catch (err) {
-				console.error("QR verification error:", err);
-			} finally {
-				setLoading(false);
-			}
-		};
+    // Hàm format tiền tệ sang "đ"
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('vi-VN').format(amount) + "đ";
+    };
 
-		verifyQRCode();
-	}, [tableId, token]);
+    useEffect(() => {
+        const verifyQRCode = async () => {
+            if (!tableId || !token) {
+                setError("Mã QR không hợp lệ hoặc thiếu thông tin.");
+                setLoading(false);
+                return;
+            }
+            try {
+                const response = await tableService.verifyQRToken(tableId, token);
+                if (response.success) {
+                    setTableInfo(response.data);
+                } else {
+                    setError(response.message || "Xác thực mã QR thất bại.");
+                }
+            } catch (err) {
+                setError("Lỗi kết nối máy chủ.");
+            } finally {
+                setLoading(false);
+            }
+        };
+        verifyQRCode();
+    }, [tableId, token]);
 
-	// Load menu when tableInfo is available
-	useEffect(() => {
-		const loadMenu = async () => {
-			if (!tableInfo) return;
+    useEffect(() => {
+        if (!tableInfo) return;
+        
+        setMenuLoading(true);
+        try {
+            const rawCategories = tableInfo.categories || [];
+            const items = tableInfo.items || [];
 
-			setMenuLoading(true);
-			setMenuError(null);
+            const itemsByCategory = items.reduce((acc, item) => {
+                const catId = item.category?.id;
+                if (catId) {
+                    if (!acc[catId]) acc[catId] = [];
+                    acc[catId].push(item);
+                }
+                return acc;
+            }, {});
 
-			try {
-				const rawCategories = tableInfo.categories || [];
-				const items = tableInfo.items || [];
+            const categoriesWithItems = rawCategories.map(cat => ({
+                ...cat,
+                items: itemsByCategory[cat.id] || [],
+            }));
 
-				if (rawCategories.length > 0) {
-					const itemsByCategory = items.reduce((acc, item) => {
-						const categoryId = item.category?.id;
-						if (categoryId) {
-							if (!acc[categoryId]) {
-								acc[categoryId] = [];
-							}
-							acc[categoryId].push(item);
-						}
-						return acc;
-					}, {});
+            setCategories(categoriesWithItems);
+            if (categoriesWithItems.length > 0) {
+                setActiveCategory(categoriesWithItems[0].id);
+            }
+        } catch (err) {
+            setMenuError("Không thể hiển thị thực đơn.");
+        } finally {
+            setMenuLoading(false);
+        }
+    }, [tableInfo]);
 
-					const categoriesWithItems = rawCategories.map(
-						(category) => ({
-							...category,
-							items: itemsByCategory[category.id] || [],
-						})
-					);
+    const handlePlaceOrder = async () => {
+        if (cart.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Giỏ hàng trống!',
+                text: 'Vui lòng thêm món vào giỏ trước khi đặt hàng.',
+                confirmButtonColor: '#ea580c'
+            });
+            return;
+        }
 
-					setCategories(categoriesWithItems);
+        const targetTableId = tableInfo?.table?.id || tableId;
+        const isLoggedIn = CustomerService.isLoggedIn();
 
-					if (categoriesWithItems.length > 0) {
-						setActiveCategory(categoriesWithItems[0].id);
-					}
-				} else {
-					setMenuError("Failed to load menu");
-				}
-			} catch (err) {
-				console.error("Error loading menu:", err);
-				setMenuError("Unable to load menu. Please try again later.");
-			} finally {
-				setMenuLoading(false);
-			}
-		};
+        if (!isLoggedIn) {
+            const result = await Swal.fire({
+                title: 'Tiếp tục với tư cách Khách?',
+                html: "Bạn chưa đăng nhập. Bạn sẽ không thể xem lại lịch sử đơn hàng sau khi đóng trình duyệt.<br><br><b>Đăng nhập ngay để tích điểm thưởng!</b>",
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonText: 'Tiếp tục đặt món',
+                cancelButtonText: 'Đăng nhập ngay',
+                confirmButtonColor: '#9ca3af',
+                cancelButtonColor: '#ea580c',
+                reverseButtons: true
+            });
 
-		if (tableInfo) {
-			loadMenu();
-		}
-	}, [tableInfo]);
+            if (result.isDismissed) {
+                navigate("/customer/login", { 
+                    state: { from: location.pathname + location.search } 
+                });
+                return;
+            }
+        }
 
-	const handlePlaceOrder = () => {
-		if (cart.length === 0) {
-			alert("Your cart is empty!");
-			return;
-		}
+        setOrderPlacing(true);
 
-		const orderData = {
-			table_id: tableInfo.id,
-			items: cart.map((item) => ({
-				menu_item_id: item.id,
-				quantity: item.quantity,
-				base_price: item.basePrice,
-				modifiers: item.modifiers || [],
-				modifiers_total: item.modifiersTotalPrice || 0,
-				unit_price: item.unitPrice,
-				total: item.total,
-			})),
-			total_amount: cartTotal,
-		};
+        try {
+            const cartItems = cart.map(item => ({
+                id: item.id,
+                price: item.unitPrice, 
+                quantity: item.quantity,
+                name: item.name,
+                notes: item.note || "", 
+                modifiers: item.modifiers || []
+            }));
 
-		console.log("Placing order:", orderData);
-		alert(`Order placed successfully! Total: $${cartTotal.toFixed(2)}`);
-		clearCart();
-	};
+            const orderResponse = await CustomerService.createOrderWithItems(targetTableId, cartItems);
+            
+            if (orderResponse.success) {
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Đặt món thành công!',
+                    html: `
+                        <div style="text-align: center;">
+                            <p>Bàn số: <b>${tableInfo?.table?.table_number}</b></p>
+                            <p>Mã đơn: <b>#${orderResponse.orderId?.toString().substring(0,8).toUpperCase()}</b></p>
+                            <hr style="margin: 10px 0;">
+                            <p>Tổng tiền: <b style="color: #ea580c;">${formatCurrency(orderResponse.totalAmount)}</b></p>
+                            <p style="font-size: 0.9em; color: #666;">Nhân viên sẽ phục vụ bạn ngay!</p>
+                        </div>
+                    `,
+                    confirmButtonColor: '#ea580c',
+                });
+                
+                clearCart();
+                setIsCartOpen(false);
+            } else {
+                throw new Error(orderResponse.message || "Đặt món thất bại");
+            }
 
-	// Handle customize (open modifier modal)
-	const handleCustomize = (item) => {
-		setSelectedItem(item);
-	};
+        } catch (err) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Lỗi hệ thống',
+                text: err.message || "Không thể gửi đơn hàng lúc này.",
+                confirmButtonColor: '#ef4444'
+            });
+        } finally {
+            setOrderPlacing(false);
+        }
+    };
 
-	// Handle add to cart from modifier modal
-	const handleAddFromModal = (
-		item,
-		modifiers,
-		quantity,
-		modifiersTotalPrice
-	) => {
-		addToCart(item, modifiers, quantity, modifiersTotalPrice);
-		setSelectedItem(null);
-	};
+    const handleCustomize = (item) => setSelectedItem(item);
 
-	if (loading) {
-		return (
-			<div className="min-h-screen bg-gray-50 flex items-center justify-center">
-				<Loading size="lg" text="Verifying QR code..." />
-			</div>
-		);
-	}
+    const handleAddFromModal = (item, modifiers, quantity, modifiersTotalPrice) => {
+        addToCart(item, modifiers, quantity, modifiersTotalPrice);
+        setSelectedItem(null);
+        showToast('success', `Đã thêm ${item.name} vào giỏ`);
+    };
 
-	if (error || !tableInfo) {
-		return (
-			<div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-				<div className="max-w-md w-full">
-					<Alert
-						type="error"
-						message={error || "Invalid QR code"}
-						className="mb-4"
-					/>
-					<div className="bg-white rounded-lg shadow-md p-6 text-center">
-						<svg
-							className="w-16 h-16 mx-auto text-red-500 mb-4"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth={2}
-								d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-							/>
-						</svg>
-						<h2 className="text-xl font-bold text-gray-900 mb-2">
-							Invalid QR Code
-						</h2>
-						<p className="text-gray-600">
-							Please scan a valid table QR code or contact staff
-							for assistance.
-						</p>
-					</div>
-				</div>
-			</div>
-		);
-	}
+    if (loading) return (
+        <div className="min-h-screen flex items-center justify-center">
+            <Loading size="lg" text="Đang xác thực thông tin bàn..." />
+        </div>
+    );
 
-	const activeCategoryData = categories.find(
-		(cat) => cat.id === activeCategory
-	);
+    if (error) return (
+        <div className="p-4 container mx-auto">
+            <Alert type="error" message={error} />
+        </div>
+    );
 
-	return (
-		<div className="min-h-screen bg-white">
-			<MenuHeader
-				tableNumber={tableInfo.table?.table_number}
-				cartItemCount={cart.length}
-			/>
+    const activeCategoryData = categories.find(cat => cat.id === activeCategory);
 
-			<main className="container mx-auto px-4 py-6">
-				{menuError && (
-					<div className="mb-6">
-						<Alert type="warning" message={menuError} />
-					</div>
-				)}
+    return (
+        <div className="min-h-screen bg-gray-50">
+            <MenuHeader 
+                tableNumber={tableInfo?.table?.table_number} 
+                cartItemCount={getTotalItems()} 
+            />
 
-				{menuLoading ? (
-					<div className="flex justify-center py-12">
-						<Loading text="Loading menu..." />
-					</div>
-				) : categories.length > 0 ? (
-					<div className="mb-8">
-						<h2 className="text-xl font-bold text-gray-900 mb-4">
-							Our Menu
-						</h2>
+            <main className="container mx-auto px-4 py-6 mb-24">
+                {menuError && <Alert type="warning" message={menuError} />}
 
-						<CategoryTabs
-							categories={categories}
-							activeCategory={activeCategory}
-							onSelectCategory={setActiveCategory}
-						/>
+                <CategoryTabs 
+                    categories={categories} 
+                    activeCategory={activeCategory} 
+                    onSelectCategory={setActiveCategory} 
+                />
 
-						{activeCategoryData ? (
-							<div className="space-y-6">
-								<div className="flex items-center justify-between mb-4">
-									<h3 className="text-xl font-bold text-gray-900">
-										{activeCategoryData.name}
-									</h3>
-									{activeCategoryData.description && (
-										<p className="text-gray-600 text-sm md:text-base max-w-lg hidden md:block">
-											{activeCategoryData.description}
-										</p>
-									)}
-								</div>
+                {menuLoading ? (
+                    <div className="py-20">
+                        <Loading text="Đang tải thực đơn..." />
+                    </div>
+                ) : (
+                    <div className="mt-6">
+                        <h3 className="text-xl font-bold mb-4 text-gray-800">
+                            {activeCategoryData?.name || "Thực đơn"}
+                        </h3>
+                        
+                        {/* Kiểm tra nếu danh mục không có item */}
+                        {activeCategoryData && activeCategoryData.items.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {activeCategoryData.items.map(item => (
+                                    <MenuItemCard 
+                                        key={item.id} 
+                                        item={item} 
+                                        onCustomize={handleCustomize} 
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="py-20 text-center bg-white rounded-2xl border border-dashed border-gray-300">
+                                <p className="text-gray-500 italic">Hiện tại danh mục này chưa có món ăn nào.</p>
+                            </div>
+                        )}
+                    </div>
+                )}
 
-								{activeCategoryData.description && (
-									<p className="text-gray-600 text-sm mb-6 md:hidden">
-										{activeCategoryData.description}
-									</p>
-								)}
+                <CartSidebar
+                    cart={cart}
+                    cartTotal={cartTotal}
+                    isOpen={isCartOpen}
+                    onClose={() => setIsCartOpen(false)}
+                    onUpdateQuantity={updateQuantity}
+                    onRemoveItem={removeFromCart}
+                    onClearCart={clearCart}
+                    onPlaceOrder={handlePlaceOrder}
+                    orderPlacing={orderPlacing}
+                />
 
-								<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-									{activeCategoryData.items
-										?.sort(
-											(a, b) =>
-												new Date(b.created_at) -
-												new Date(a.created_at)
-										)
-										.map((item) => (
-											<MenuItemCard
-												key={item.id}
-												item={item}
-												onCustomize={handleCustomize}
-											/>
-										))}
-								</div>
+                {!isCartOpen && getTotalItems() > 0 && (
+                    <CartButton
+                        totalItems={getTotalItems()}
+                        cartTotal={cartTotal}
+                        onClick={() => setIsCartOpen(true)}
+                    />
+                )}
 
-								{(!activeCategoryData.items ||
-									activeCategoryData.items.length === 0) && (
-									<EmptyCategory />
-								)}
-							</div>
-						) : (
-							<div className="text-center py-12">
-								<p className="text-gray-600">
-									Select a category to view items
-								</p>
-							</div>
-						)}
-					</div>
-				) : (
-					<EmptyMenu />
-				)}
-
-				<CartSidebar
-					cart={cart}
-					cartTotal={cartTotal}
-					isOpen={isCartOpen}
-					onClose={() => setIsCartOpen(false)}
-					onUpdateQuantity={updateQuantity}
-					onRemoveItem={removeFromCart}
-					onClearCart={clearCart}
-					onPlaceOrder={handlePlaceOrder}
-				/>
-
-				{!isCartOpen && (
-					<CartButton
-						totalItems={getTotalItems()}
-						cartTotal={cartTotal}
-						onClick={() => setIsCartOpen(true)}
-					/>
-				)}
-
-				{/* Modifier Modal */}
-				<ModifierModal
-					item={selectedItem}
-					isOpen={!!selectedItem}
-					onClose={() => setSelectedItem(null)}
-					onAddToCart={handleAddFromModal}
-				/>
-			</main>
-
-			<MenuFooter />
-		</div>
-	);
+                <ModifierModal
+                    item={selectedItem}
+                    isOpen={!!selectedItem}
+                    onClose={() => setSelectedItem(null)}
+                    onAddToCart={handleAddFromModal}
+                />
+            </main>
+            <MenuFooter />
+        </div>
+    );
 };
-
-// Small sub-components for empty states
-const EmptyCategory = () => (
-	<div className="text-center py-12">
-		<div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-			<svg
-				className="w-8 h-8 text-gray-400"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-			>
-				<path
-					strokeLinecap="round"
-					strokeLinejoin="round"
-					strokeWidth={2}
-					d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-				/>
-			</svg>
-		</div>
-		<h3 className="text-lg font-medium text-gray-900 mb-2">
-			No items available
-		</h3>
-		<p className="text-gray-600">
-			Check back later for new menu items in this category.
-		</p>
-	</div>
-);
-
-const EmptyMenu = () => (
-	<div className="text-center py-12">
-		<div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-			<svg
-				className="w-8 h-8 text-gray-400"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-			>
-				<path
-					strokeLinecap="round"
-					strokeLinejoin="round"
-					strokeWidth={2}
-					d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-				/>
-			</svg>
-		</div>
-		<h3 className="text-lg font-medium text-gray-900 mb-2">
-			Menu Not Available
-		</h3>
-		<p className="text-gray-600">
-			The menu is currently being prepared. Please check back soon.
-		</p>
-		<button
-			onClick={() => window.location.reload()}
-			className="mt-4 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
-		>
-			Retry
-		</button>
-	</div>
-);
 
 export default MenuPage;

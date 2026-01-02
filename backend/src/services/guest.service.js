@@ -4,7 +4,6 @@ import MenuCategory from "../models/menuCategory.js";
 import MenuItemPhoto from "../models/menuItemPhoto.js";
 import ModifierGroup from "../models/modifierGroup.js";
 import ModifierOption from "../models/modifierOption.js";
-import MenuItemModifierGroup from "../models/menuItemModifierGroup.js";
 import Table from "../models/table.js";
 
 const getGuestMenu = async ({

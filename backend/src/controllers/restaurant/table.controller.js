@@ -28,7 +28,32 @@ export const getAllTable = async (req, res) => {
   }
 };
 
+export const getTableNameByID = async (req, res) => {
+  console.log("---------- DEBUG GET TABLE NAME ----------");
+  console.log("Request Params ID:", req.params.id);
+  console.log("Full URL:", req.originalUrl);
 
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      console.log("DEBUG: ID bị thiếu trong params");
+      return res.status(400).json({ success: false, message: "ID bàn không hợp lệ" });
+    }
+
+    const table = await TableService.getTableNameOnly(id);
+    
+    console.log("DEBUG: Query thành công, Table:", table);
+    
+    return res.json({ 
+      success: true, 
+      data: table 
+    });
+  } catch (error) {
+    console.error("DEBUG ERROR tại Controller:", error.message);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
 
 // Lấy bàn theo ID 
 export const getTableById = async (req, res) => {

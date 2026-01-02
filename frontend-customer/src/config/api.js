@@ -19,6 +19,14 @@ const publicApi = axios.create({
   },
 });
 
+// ==== THÊM: Customer API (dành riêng cho khách hàng) ====
+const customerApi = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
 // Interceptor chung
 const setupInterceptors = (instance) => {
   // Request interceptor
@@ -60,5 +68,35 @@ const setupInterceptors = (instance) => {
 // Áp dụng interceptors cho cả hai instances
 setupInterceptors(adminApi);
 setupInterceptors(publicApi);
+setupInterceptors(customerApi); // THÊM: Áp dụng cho customerApi
 
-export { adminApi, publicApi };
+// ==== THÊM: Interceptor riêng cho customerApi ====
+customerApi.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("customer_token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// ==== THÊM: Interceptor cho adminApi (nếu cần) ====
+// Để không ảnh hưởng đến code hiện tại, chỉ thêm nếu cần
+// adminApi.interceptors.request.use(
+//   (config) => {
+//     const token = localStorage.getItem("token"); // token admin
+//     if (token) {
+//       config.headers.Authorization = `Bearer ${token}`;
+//     }
+//     return config;
+//   },
+//   (error) => {
+//     return Promise.reject(error);
+//   }
+// );
+
+export { adminApi, publicApi, customerApi }; // THÊM: Export customerApi

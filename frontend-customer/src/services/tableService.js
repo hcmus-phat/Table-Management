@@ -14,6 +14,13 @@ const tableService = {
     return response.data;
   },
 
+
+  getTableNumberById: async (id) => {
+    const response = await publicApi.get(`/public/name/${id}`);
+    return response.data;
+  },
+
+
   // Create new table
   createTable: async (tableData) => {
     const response = await adminApi.post("/tables", tableData);
@@ -143,5 +150,8 @@ const tableService = {
     });
   },
 };
+
+
+
 
 export default tableService;

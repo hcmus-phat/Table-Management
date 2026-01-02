@@ -5,8 +5,8 @@ import dotenv from 'dotenv';
 
 // Import db từ index (đã bao gồm setup associations)
 import db from '../models/index.js'; 
-
 import rootRouter from '../routes/index.js';
+import tablePublicRoutes from "../routes/restaurant/tablePublic.routes.js"
 
 dotenv.config();
 
@@ -18,7 +18,7 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
-// app.use('/api/menu', tablePublicRoutes);
+app.use('/api/public', tablePublicRoutes);
 app.use('/api', rootRouter);
 
 // Test routes
