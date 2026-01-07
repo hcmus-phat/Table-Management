@@ -11,34 +11,34 @@ Order.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    
+
     customer_id: {
       type: DataTypes.UUID,
       allowNull: true, //cho phép null trường hợp không đăng nhập
       references: {
-        model: 'customers',
-        key: 'uid'
-      }
+        model: "customers",
+        key: "uid",
+      },
     },
-   
+
     table_id: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: 'tables',
-        key: 'id'
-      }
+        model: "tables",
+        key: "id",
+      },
     },
-    
+
     total_amount: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       defaultValue: 0,
       validate: {
-        min: 0
-      }
+        min: 0,
+      },
     },
-    
+
     ordered_at: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -49,6 +49,15 @@ Order.init(
       type: DataTypes.DATE,
       allowNull: true,
     },
+
+    status: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      defaultValue: "received",
+      validate: {
+        isIn: [["received", "preparing", "ready", "served"]],
+      },
+    },
   },
   {
     sequelize,
@@ -58,16 +67,23 @@ Order.init(
     updatedAt: "updated_at",
     indexes: [
       {
-        fields: ['customer_id'] 
+        fields: ["customer_id"],
       },
       {
-        fields: ['table_id']
+        fields: ["table_id"],
       },
       {
-        fields: ['ordered_at']
-      }
-    ]
+        fields: ["ordered_at"],
+      },
+    ],
   }
 );
+
+Order.associate = (models) => {
+  Order.hasMany(models.OrderItem, {
+    foreignKey: "order_id",
+    as: "items",
+  });
+};
 
 export default Order;

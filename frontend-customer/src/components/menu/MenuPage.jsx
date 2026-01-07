@@ -11,6 +11,8 @@ import CategoryTabs from "./CategoryTabs";
 import MenuItemCard from "./MenuItemCard";
 import CartSidebar from "./CartSidebar";
 import CartButton from "./CartButton";
+import OrderStatusButton from "./OrderStatusButton";
+import OrderStatusModal from "./OrderStatusModal";
 import ModifierModal from "./ModifierModal";
 import useCart from "./hooks/useCart";
 
@@ -31,6 +33,8 @@ const MenuPage = () => {
   const [activeCategory, setActiveCategory] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [orderPlacing, setOrderPlacing] = useState(false);
+  const [recentOrderIds, setRecentOrderIds] = useState([]);
+  const [isOrderStatusOpen, setIsOrderStatusOpen] = useState(false);
 
   const {
     cart,
@@ -72,6 +76,12 @@ const MenuPage = () => {
         const response = await tableService.verifyQRToken(tableId, token);
         if (response.success) {
           setTableInfo(response.data);
+          // Load recent order IDs từ localStorage
+          const storageKey = `recent_orders_${tableId}`;
+          const savedOrders = localStorage.getItem(storageKey);
+          if (savedOrders) {
+            setRecentOrderIds(JSON.parse(savedOrders));
+          }
         } else {
           setError(response.message || "Xác thực mã QR thất bại.");
         }
@@ -170,6 +180,16 @@ const MenuPage = () => {
       );
 
       if (orderResponse.success) {
+        // Lưu order ID vào localStorage
+        const storageKey = `recent_orders_${tableId}`;
+        const currentOrders = JSON.parse(
+          localStorage.getItem(storageKey) || "[]"
+        );
+        const updatedOrders = [...currentOrders, orderResponse.orderId];
+        localStorage.setItem(storageKey, JSON.stringify(updatedOrders));
+        console.log("OrderIds for api: ", updatedOrders)
+        setRecentOrderIds(updatedOrders);
+
         await Swal.fire({
           icon: "success",
           title: "Đặt món thành công!",
@@ -307,6 +327,21 @@ const MenuPage = () => {
             onClick={() => setIsCartOpen(true)}
           />
         )}
+
+        {recentOrderIds.length > 0 && (
+          <OrderStatusButton
+            onClick={() => setIsOrderStatusOpen(true)}
+            hasOrders={recentOrderIds.length}
+          />
+        )}
+
+        <OrderStatusModal
+          isOpen={isOrderStatusOpen}
+          tableId={tableId}
+          token={token}
+          recentOrderIds={recentOrderIds}
+          onClose={() => setIsOrderStatusOpen(false)}
+        />
 
         <ModifierModal
           item={selectedItem}

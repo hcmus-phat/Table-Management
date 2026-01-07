@@ -58,6 +58,32 @@ class CustomerService {
     return response.data;
   }
 
+  // Get orders by IDs (public endpoint)
+  async getOrdersByIds(orderIds) {
+    try {
+      const token = this.getToken();
+      const apiExecutor = token ? customerApi : publicApi;
+
+      const orderPromises = orderIds.map(async (orderId) => {
+        const response = await apiExecutor.get(`/customer/orders/${orderId}`);
+        return response.data;
+      });
+
+      const results = await Promise.all(orderPromises);
+
+      return {
+        success: true,
+        data: results.map((r) => r.data || r).flat(),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Unable to fetch order information",
+        data: [],
+      };
+    }
+  }
+
   // ========== ORDER ITEM METHODS ==========
   async createOrderWithItems(tableId, cartItems) {
     // 1. Tính tổng tiền
@@ -90,7 +116,7 @@ class CustomerService {
         quantity: Number(item.quantity) || 1,
         price_at_order: Number(item.price) || 0,
         notes: item.notes || "",
-        modifiers: item.modifiers
+        modifiers: item.modifiers,
       };
       return await apiExecutor.post("/customer/order-items", itemData);
     });
