@@ -3,7 +3,7 @@ import { customerApi, publicApi } from "../config/api";
 class CustomerService {
   // ========== PUBLIC METHODS ==========
 
-  // 1. Đăng ký
+  // Đăng ký
   async register(username, email, password) {
     try {
       const response = await publicApi.post("/customer/register", {
@@ -17,7 +17,7 @@ class CustomerService {
     }
   }
 
-  // 2. Đăng nhập
+  // Đăng nhập
   async login(email, password) {
     try {
       const response = await publicApi.post("/customer/login", {
@@ -25,7 +25,7 @@ class CustomerService {
         password,
       });
 
-      // 🔥 Kiểm tra nếu cần xác thực email
+      // Kiểm tra nếu cần xác thực email
       if (response.data.needsVerification) {
         return {
           success: false,
@@ -59,7 +59,7 @@ class CustomerService {
     }
   }
 
-  // 3. Xác thực Email OTP
+  // Xác thực Email OTP
   async verifyEmailOTP(customerId, email, otp) {
     try {
       const response = await publicApi.post("/customer/verify-email", {
@@ -77,7 +77,7 @@ class CustomerService {
     }
   }
 
-  // 4. Gửi lại OTP
+  // Gửi lại OTP
   async resendOTP(customerId, email) {
     try {
       const response = await publicApi.post("/customer/resend-otp", {
@@ -94,7 +94,7 @@ class CustomerService {
     }
   }
 
-  // 5. Kiểm tra trạng thái xác thực
+  // Kiểm tra trạng thái xác thực
   async checkVerificationStatus(customerId, email) {
     try {
       const response = await publicApi.get("/customer/check-verification", {
@@ -110,7 +110,7 @@ class CustomerService {
     }
   }
 
-  // 6. Kiểm tra email đã tồn tại
+  // Kiểm tra email đã tồn tại
   async checkEmailExists(email) {
     try {
       const response = await publicApi.get("/customer/check-email", {
@@ -126,7 +126,7 @@ class CustomerService {
     }
   }
 
-  // 7. Lấy thông tin customer (protected)
+  // Lấy thông tin customer (protected)
   async getMe() {
     try {
       if (!this.isLoggedIn()) {
@@ -141,7 +141,7 @@ class CustomerService {
     }
   }
 
-  // 8. Cập nhật profile (protected)
+  // Cập nhật profile (protected)
   async updateMe(updateData) {
     try {
       if (!this.isLoggedIn()) {
@@ -156,7 +156,7 @@ class CustomerService {
     }
   }
 
-  // 9. Đổi mật khẩu (protected)
+  // Đổi mật khẩu (protected)
   async changePassword(oldPassword, newPassword) {
     try {
       if (!this.isLoggedIn()) {
@@ -176,7 +176,7 @@ class CustomerService {
 
   // ========== ORDER METHODS ==========
 
-  // 10. Tạo order
+  // Tạo order
   async createOrder(tableId, totalAmount) {
     try {
       const numericTotal = Number(totalAmount);
@@ -200,7 +200,7 @@ class CustomerService {
     }
   }
 
-  // 11. Tạo order với items
+  // Tạo order với items
   async createOrderWithItems(tableId, cartItems) {
     try {     
       // Tính tổng tiền

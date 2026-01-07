@@ -52,8 +52,6 @@ const CustomerLoginPage = () => {
 		try {
 			// 🔥 SỬA: Gọi login API mới
 			const result = await customerService.login(email, password);
-			
-			console.log("Login result:", result);
 
 			// Kiểm tra nếu cần verify email
 			if (result.needsVerification) {
@@ -77,7 +75,7 @@ const CustomerLoginPage = () => {
 				// Điều hướng về URL gốc đã lưu
 				setTimeout(() => {
 					navigate(from, { replace: true });
-				}, 1000);
+				});
 			} else {
 				throw new Error(result.error || "Đăng nhập thất bại");
 			}

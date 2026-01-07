@@ -28,16 +28,7 @@ const VerifyEmailPage = () => {
 			setSuccess(message);
 		}
 		
-		console.log("📋 Verification info:", { 
-			customerId, 
-			email, 
-			from,
-			hasCustomerId: !!customerId,
-			hasEmail: !!email
-		});
-		
 		if (!customerId || !email) {
-			console.warn("⚠️ Missing info:", { customerId, email });
 			setError("Thông tin xác thực không đầy đủ. Vui lòng thử lại.");
 		}
 	}, [customerId, email, message]);
@@ -163,21 +154,13 @@ const VerifyEmailPage = () => {
 		setSuccess("");
 
 		try {
-			console.log("🔐 [DEBUG] VERIFY OTP REQUEST:", {
-				customerId: customerId,
-				email: email,
-				otp: otpString,
-				otpLength: otpString.length
-			});
-			
+	
 			const response = await customerService.verifyEmailOTP(customerId, email, otpString);
-			
-			console.log("✅ [DEBUG] VERIFY OTP RESPONSE:", response);
 			
 			if (response.success) {
 				setSuccess("✅ Xác thực email thành công!");
 				
-				// Redirect về trang login sau 2 giây
+				// Redirect về trang login
 				setTimeout(() => {
 					navigate("/customer/login", {
 						state: {
@@ -188,15 +171,13 @@ const VerifyEmailPage = () => {
 						},
 						replace: true
 					});
-				}, 2000);
+				});
 			} else {
 				const errorMsg = response.error || response.message || "Xác thực thất bại";
-				console.error("❌ [DEBUG] OTP VERIFICATION FAILED:", errorMsg);
 				throw new Error(errorMsg);
 			}
 
 		} catch (err) {
-			console.error("❌ [DEBUG] VERIFY OTP CATCH ERROR:", err);
 			
 			let displayError = err.message || "Xác thực thất bại. Vui lòng thử lại.";
 			
@@ -225,15 +206,12 @@ const VerifyEmailPage = () => {
 		setSuccess("");
 
 		try {
-			console.log("🔄 [DEBUG] RESEND OTP REQUEST:", { customerId, email });
 			
 			const response = await customerService.resendOTP(customerId, email);
 			
-			console.log("✅ [DEBUG] RESEND OTP RESPONSE:", response);
-			
 			if (response.success) {
 				setSuccess("✅ Vui lòng kiểm tra email mã OTP của bạn");
-				setTimer(900); // Reset timer về 15 phút
+				setTimer(120); 
 				setCanResend(false);
 				setOtp(["", "", "", "", "", ""]);
 				
@@ -247,7 +225,6 @@ const VerifyEmailPage = () => {
 			}
 
 		} catch (err) {
-			console.error("❌ [DEBUG] RESEND OTP ERROR:", err);
 			setError(err.message || "Không thể gửi lại OTP. Vui lòng thử lại.");
 		} finally {
 			setLoading(false);
