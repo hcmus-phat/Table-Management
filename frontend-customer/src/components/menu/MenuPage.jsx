@@ -200,7 +200,15 @@ const MenuPage = () => {
         }
     };
 
-    const handleCustomize = (item) => setSelectedItem(item);
+    const handleCustomize = (item) => {
+        // Kiểm tra chặt chẽ các trạng thái không khả dụng
+        console.log("Check món:", item.name, "| Status:", item.status);
+        if (item.status === 'unavailable' || item.status === 'sold_out') {
+            showToast('warning', 'Món này hiện đang tạm ngưng phục vụ.');
+            return; // Dừng ngay lập tức, không set selectedItem
+        }
+        setSelectedItem(item);
+    };
 
     const handleAddFromModal = (item, modifiers, quantity, modifiersTotalPrice) => {
         addToCart(item, modifiers, quantity, modifiersTotalPrice);

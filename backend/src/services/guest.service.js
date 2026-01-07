@@ -63,11 +63,10 @@ const getGuestMenu = async ({
 	const { count, rows: items } = await MenuItem.findAndCountAll({
 		where: itemWhereClause,
 		include: [
-			// Primary photo
+			// Photo
 			{
 				model: MenuItemPhoto,
 				as: "photos",
-				where: { is_primary: true },
 				required: false,
 				attributes: ["id", "url", "is_primary"],
 			},
@@ -112,6 +111,10 @@ const getGuestMenu = async ({
 		description: item.description,
 		price: item.price,
 		is_chef_recommended: item.is_chef_recommended,
+
+    status: item.status,         
+    prep_time_minutes: item.prep_time_minutes,
+
 		primary_photo:
 			item.photos && item.photos.length > 0 ? item.photos[0] : null,
 		category: item.category,
