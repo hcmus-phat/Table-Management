@@ -1,6 +1,7 @@
 import { DataTypes, Model } from "sequelize";
 import sequelize from "../config/database.js";
 import bcrypt from "bcryptjs";
+import VerifiedEmail from "./verifiedEmail.js"; // Import model VerifiedEmail
 
 class Customer extends Model {
   async comparePassword(candidatePassword) {
@@ -49,9 +50,31 @@ Customer.init(
           const salt = await bcrypt.genSalt(10);
           customer.password = await bcrypt.hash(customer.password, salt);
         }
+      },
+      afterUpdate: async (customer) => {
+        if (customer.changed('email')) {
+          await VerifiedEmail.create({
+            customer_uid: customer.uid,
+            email: customer.email,
+            is_verified: false
+          });
+        }
       }
     }
   }
 );
+
+// Thiết lập quan hệ
+Customer.hasMany(VerifiedEmail, {
+  foreignKey: 'customer_uid',
+  sourceKey: 'uid',
+  as: 'verifiedEmails'
+});
+
+VerifiedEmail.belongsTo(Customer, {
+  foreignKey: 'customer_uid',
+  targetKey: 'uid',
+  as: 'customer'
+});
 
 export default Customer;

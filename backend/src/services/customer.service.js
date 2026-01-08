@@ -1,5 +1,8 @@
 import Customer from "../models/customer.js"; 
+import VerifiedEmail from "../models/verifiedEmail.js";
 import jwt from "jsonwebtoken";
+import OTPService from "./otp.service.js";
+import emailService from "./email.service.js";
 
 class CustomerService {
 
@@ -25,34 +28,57 @@ class CustomerService {
         } 
     }
 
-    // Đăng ký
+    // Đăng ký với OTP
     async register(username, email, password){
         const existAccount = await Customer.findOne({
-            where: { username: username }
+            where: { email: email }
         });
 
         if(existAccount){
-            throw new Error("Username đã được sử dụng");
-        }
-
-        const existEmail = await Customer.findOne({
-            where: { email: email }
-        })
-
-        if(existEmail){
             throw new Error("Email đã được sử dụng");
         }
 
+        // Tạo customer
         const customer = await Customer.create({username, email, password});
+        
+        // Tạo OTP và gửi email
+        try {
+            const otp = OTPService.generateOTP();
+            const otpExpires = new Date(Date.now() + 2 * 60 * 1000);
+            
+            await VerifiedEmail.create({
+                customer_uid: customer.uid,
+                email: customer.email,
+                otp_code: otp,
+                otp_expires: otpExpires,
+                is_verified: false
+            });
+
+            // Gửi email OTP
+            await emailService.sendOTPEmail(email, otp, username);
+            
+        } catch (emailError) {
+            console.error("Không thể gửi email OTP:", emailError);
+            // Vẫn tạo customer nhưng log lỗi email
+            if (process.env.NODE_ENV === 'production') {
+                throw new Error("Không thể gửi email xác thực. Vui lòng thử lại sau.");
+            }
+        }
+
         const accessToken = this.generateAccessToken(customer);
 
-        return {customer, accessToken};
+        return {
+            customer, 
+            accessToken,
+            needsVerification: true,
+            message: "Đăng ký thành công. Vui lòng kiểm tra email để xác thực."
+        };
     }
 
-    // Đăng nhập
-    async login(username, password){
+    // Đăng nhập - kiểm tra email đã verify chưa
+    async login(email,  password){
         const customer = await Customer.findOne({
-            where: { username: username }
+            where: { email: email }
         })
 
         if(!customer){
@@ -64,8 +90,144 @@ class CustomerService {
             throw new Error("Sai mật khẩu hoặc tên đăng nhập");
         }
 
+        // Kiểm tra email đã verified chưa
+        const verifiedEmail = await VerifiedEmail.findOne({
+            where: {
+                customer_uid: customer.uid,
+                email: customer.email,
+                is_verified: true
+            }
+        });
+
+        // Nếu chưa verified, trả về thông tin để redirect
+        if (!verifiedEmail) {
+            // Tạo OTP mới nếu không có OTP đang active
+            const activeOTP = await VerifiedEmail.findOne({
+                where: {
+                    customer_uid: customer.uid,
+                    email: customer.email,
+                    is_verified: false,
+                    otp_expires: {
+                        $gt: new Date()
+                    }
+                }
+            });
+
+            // Nếu không có OTP active, tạo mới và gửi email
+            if (!activeOTP) {
+                const otp = OTPService.generateOTP();
+                const otpExpires = new Date(Date.now() + 2 * 60 * 1000);
+                
+                await VerifiedEmail.create({
+                    customer_uid: customer.uid,
+                    email: customer.email,
+                    otp_code: otp,
+                    otp_expires: otpExpires,
+                    is_verified: false
+                });
+
+                await emailService.sendOTPEmail(customer.email, otp, customer.username);
+            }
+            throw new Error("EMAIL_NOT_VERIFIED");
+        }
+
         const accessToken = this.generateAccessToken(customer);
-        return { customer, accessToken };
+        return { 
+            customer, 
+            accessToken,
+            isEmailVerified: true 
+        };
+    }
+
+    async sendForgotPasswordOTP(email) {
+        try {
+            const verificationRecord = await VerifiedEmail.findOne({
+                where: {
+                    email: email
+                },
+                order: [['created_at', 'DESC']]
+            });
+
+            if(!verificationRecord){
+                throw new Error("Email chưa được đăng ký");
+            }
+
+            
+            // Tạo OTP
+            const otp = OTPService.generateOTP();
+            const otpExpires = new Date(Date.now() + 2 * 60 * 1000); 
+
+            // Lưu OTP vào database
+            verificationRecord.is_verified = true;
+            verificationRecord.otp_code = otp;
+            verificationRecord.otp_expires = otpExpires;
+            await verificationRecord.save();
+
+            // Gửi email
+            await emailService.sendOTPEmail(email, otp, "");
+
+            return {
+                success: true,
+                message: "Mã OTP đã được gửi đến email của bạn",
+                email: email
+            };
+        } catch (error) {
+            console.error("Send forgot password OTP error:", error);
+            throw error;
+        }
+    }   
+
+    async verifyForgotPasswordOTP(email, otp) {
+        try {
+            const verificationRecord = await VerifiedEmail.findOne({ 
+            where: { 
+                email,
+                otp_code: otp,
+            }
+            });
+
+            if (!verificationRecord) {
+                throw new Error("Mã OTP không hợp lệ hoặc đã hết hạn");
+            }
+
+            //Kiểm tra hạn của mã 
+            if (verificationRecord.otp_expires < new Date()) {
+                throw new Error("Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.");
+            }
+
+            return {
+                success: true,
+                message: "Xác thực OTP thành công",
+                email: email
+            };
+        } catch (error) {
+            console.error("Verify forgot password OTP error:", error);
+            throw error;
+        }
+    }
+
+
+    async resetPasswordWithoutOld(email, newPassword) {
+        try {
+            
+            const customer = await Customer.findOne({
+                where: { email }
+            });
+
+            if (!customer) {
+                throw new Error("Tài khoản không tồn tại");
+            }
+
+            await customer.update({ password: newPassword });
+            
+            return {
+                success: true,
+                message: "Đặt lại mật khẩu thành công"
+            };
+        } catch (error) {
+            console.error("Reset password without old error:", error);
+            throw error;
+        }
     }
 
     // Lấy thông tin khách hàng bằng uid
@@ -75,6 +237,16 @@ class CustomerService {
         })
 
         if(!customer) throw new Error("Tài khoản không tồn tại");
+        return customer;
+    }
+
+    // Lấy customer bằng uid và email
+    async getCustomerByUid(uid) {
+        const customer = await Customer.findByPk(uid, {
+            attributes: { exclude: ["password"] } 
+        });
+        
+        if(!customer) throw new Error("Không tìm thấy tài khoản");
         return customer;
     }
 
@@ -97,20 +269,154 @@ class CustomerService {
             if (exists) throw new Error("Email đã được sử dụng");
         }
 
+        // Nếu thay đổi email, cần verify lại
+        if (updateData.email && updateData.email !== customer.email) {
+            // Tạo OTP cho email mới
+            const otp = OTPService.generateOTP();
+            const otpExpires = new Date(Date.now() + 15 * 60 * 1000);
+            
+            await VerifiedEmail.create({
+                customer_uid: customer.uid,
+                email: updateData.email,
+                otp_code: otp,
+                otp_expires: otpExpires,
+                is_verified: false
+            });
+
+            await emailService.sendOTPEmail(updateData.email, otp, customer.username);
+            
+            // Đánh dấu email cũ là không verified
+            await VerifiedEmail.update(
+                { is_verified: false },
+                { 
+                    where: { 
+                        customer_uid: customer.uid,
+                        email: customer.email 
+                    } 
+                }
+            );
+        }
+
         await customer.update(updateData);
         return customer;
     }
 
-    // Đổi mật khẩu bằng uid
-    async changePassword(uid, oldPassword, newPassword){  // NHỚ: parameter là uid
-        const customer = await Customer.findByPk(uid);
-        if(!customer) throw new Error("Tài khoản không tồn tại");
+    // Kiểm tra email tồn tại
+    async checkEmailExists(email) {
+        const customer = await Customer.findOne({
+            where: { email: email }
+        });
+        return {
+            exists: !!customer,
+            email: email
+        };
+    }
 
-        const isValid = await customer.comparePassword(oldPassword);
-        if(!isValid) throw new Error("Mật khẩu cũ không đúng");
+    // Xác thực OTP
+    async verifyEmailOTP(customerId, email, otp) {
+        const customer = await Customer.findOne({
+            where: { 
+                uid: customerId,
+                email: email 
+            }
+        });
 
-        await customer.update({password: newPassword});
-        return true;
+        if (!customer) {
+            throw new Error("Không tìm thấy tài khoản");
+        }
+
+        // Tìm OTP record mới nhất
+        const verificationRecord = await VerifiedEmail.findOne({
+            where: {
+                customer_uid: customerId,
+                email: email,
+                is_verified: false
+            },
+            order: [['created_at', 'DESC']]
+        });
+
+        if (!verificationRecord) {
+            throw new Error("Không tìm thấy mã OTP. Vui lòng yêu cầu mã mới.");
+        }
+
+        // Kiểm tra OTP hết hạn
+        if (verificationRecord.otp_expires < new Date()) {
+            throw new Error("Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.");
+        }
+
+        // Kiểm tra OTP có đúng không
+        if (verificationRecord.otp_code !== otp) {
+            throw new Error("Mã OTP không đúng");
+        }
+
+        // Xác thực thành công
+        verificationRecord.is_verified = true;
+        verificationRecord.verified_at = new Date();
+        verificationRecord.otp_code = null;
+        verificationRecord.otp_expires = null;
+        await verificationRecord.save();
+
+        // Gửi email thông báo thành công
+        await emailService.sendVerificationSuccessEmail(email, customer.username);
+
+        return {
+            success: true,
+            customer: {
+                uid: customer.uid,
+                username: customer.username,
+                email: customer.email,
+                isEmailVerified: true
+            }
+        };
+    }
+
+    // Gửi lại OTP
+    async resendOTP(customerId, email) {
+        const customer = await Customer.findOne({
+            where: { 
+                uid: customerId,
+                email: email 
+            }
+        });
+
+        if (!customer) {
+            throw new Error("Không tìm thấy tài khoản");
+        }
+
+        // Kiểm tra email đã verified chưa
+        const isVerified = await VerifiedEmail.findOne({
+            where: {
+                customer_uid: customerId,
+                email: email,
+                is_verified: true
+            }
+        });
+
+        if (isVerified) {
+            throw new Error("Email này đã được xác thực rồi.");
+        }
+
+        // Tạo OTP mới
+        const otp = OTPService.generateOTP();
+        const otpExpires = new Date(Date.now() + 15 * 60 * 1000);
+
+        // Tạo record OTP mới
+        await VerifiedEmail.create({
+            customer_uid: customerId,
+            email: email,
+            otp_code: otp,
+            otp_expires: otpExpires,
+            is_verified: false
+        });
+
+        // Gửi email
+        await emailService.sendRegistrationOTP(email, otp, customer.username);
+
+        return {
+            success: true,
+            otpExpires: otpExpires,
+            message: "Đã gửi lại mã OTP"
+        };
     }
 }
 
