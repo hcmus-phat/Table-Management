@@ -6,16 +6,56 @@ class CustomerService {
   // Đăng ký
   async register(username, email, password) {
     try {
+
       const response = await publicApi.post("/customer/register", {
         username,
         email,
-        password,
+        password,   
       });
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.error || error.message || "Đăng ký thất bại");
     }
   }
+
+  async syncGoogleUser(userData) {
+    try {
+      
+      // Gọi API backend
+      const response = await publicApi.post("/customer/sync-google", userData);
+
+      // Nếu API trả về success
+      if (response.data.success && response.data.data) {
+        const { customer, accessToken } = response.data.data;
+        
+        // Lưu vào localStorage GIỐNG NHƯ LOGIN
+        localStorage.setItem("customer_token", accessToken);
+        localStorage.setItem("customer_info", JSON.stringify(customer));
+        localStorage.setItem("auth_method", "google"); 
+
+        console.log("[CUSTOMER SERVICE] Đồng bộ thành công, đã lưu vào localStorage");
+        
+        return {
+          success: true,
+          customer,
+          accessToken,
+          message: response.data.message || "Đăng nhập Google thành công"
+        };
+      }
+
+      // Nếu API trả về lỗi
+      throw new Error(response.data.error || "Đồng bộ Google thất bại");
+
+    } catch (error) {
+      console.error('[CUSTOMER SERVICE] Sync Google error:', error);
+      throw new Error(
+        error.response?.data?.error || 
+        error.message || 
+        "Đồng bộ Google thất bại"
+      );
+    }
+  }
+
 
   // Đăng nhập
   async login(email, password) {
@@ -43,6 +83,7 @@ class CustomerService {
         
         localStorage.setItem("customer_token", accessToken);
         localStorage.setItem("customer_info", JSON.stringify(customer));
+        localStorage.setItem("auth_method", "email");
 
         return {
           success: true,

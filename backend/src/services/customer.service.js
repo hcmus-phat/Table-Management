@@ -29,7 +29,7 @@ class CustomerService {
     }
 
     // Đăng ký với OTP
-    async register(username, email, password){
+    async register(username, email, password, auth_method){
         const existAccount = await Customer.findOne({
             where: { email: email }
         });
@@ -39,7 +39,7 @@ class CustomerService {
         }
 
         // Tạo customer
-        const customer = await Customer.create({username, email, password});
+        const customer = await Customer.create({username, email, password, auth_method});
         
         // Tạo OTP và gửi email
         try {
@@ -49,6 +49,7 @@ class CustomerService {
             await VerifiedEmail.create({
                 customer_uid: customer.uid,
                 email: customer.email,
+                auth_method : customer.auth_method,
                 otp_code: otp,
                 otp_expires: otpExpires,
                 is_verified: false
@@ -75,33 +76,116 @@ class CustomerService {
         };
     }
 
+    async syncGoogleUser(username, email, auth_method) {
+        try {
+            
+            // 1. Tìm customer hiện có
+            let customer = await Customer.findOne({
+                where: { 
+                    email: email.toLowerCase(),
+                    auth_method: auth_method,
+                }
+            });
+            console.log('[DEBUG] Customer found:', customer ? customer.uid : 'Not found');
+
+            if (customer) {
+                // Cập nhật username nếu có thay đổi
+                if (username && username !== customer.username) {
+                    console.log('[DEBUG] Updating username from', customer.username, 'to', username);
+                    customer.username = username;
+                    await customer.save();
+                }
+            } else {
+                console.log('[DEBUG] Creating new Google user');
+                // Tạo password tạm cho Google user
+                const tempPassword = `google_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                
+                // Tạo customer mới
+                customer = await Customer.create({
+                    username: username || email.split('@')[0], // Fallback nếu không có username
+                    password: tempPassword,
+                    email: email.toLowerCase(),
+                    auth_method: auth_method
+                });
+                console.log('[DEBUG] Customer created:', customer.uid);
+
+                // Tạo VerifiedEmail record
+                try {
+                    const verifiedEmailData = {
+                        customer_uid: customer.uid,
+                        email: customer.email,
+                        auth_method: customer.auth_method,
+                        otp_code: null,
+                        otp_expires: null,
+                        is_verified: true
+                    };
+                    
+                    console.log('[DEBUG] Creating VerifiedEmail with data:', verifiedEmailData);
+                    const verifiedEmail = await VerifiedEmail.create(verifiedEmailData);
+                    console.log('[DEBUG] VerifiedEmail created:', verifiedEmail.id);
+                } catch (verifiedEmailError) {
+                    console.error('[DEBUG] VerifiedEmail creation error:', verifiedEmailError);
+                    console.error('[DEBUG] VerifiedEmail error details:', {
+                        message: verifiedEmailError.message,
+                        errors: verifiedEmailError.errors,
+                        stack: verifiedEmailError.stack
+                    });
+                    // Tiếp tục dù có lỗi VerifiedEmail
+                }
+            }
+
+            // Tạo token
+            const accessToken = this.generateAccessToken(customer);
+            console.log('[DEBUG] Access token generated for customer:', customer.uid);
+
+            return {
+                customer,
+                accessToken
+            };
+
+        } catch (error) {
+            console.error('[DEBUG] syncGoogleUser ERROR:', {
+                error: error.message,
+                errors: error.errors, // Sequelize validation errors
+                stack: error.stack,
+                input: { username, email, auth_method }
+            });
+            
+            // Ném lại lỗi để xử lý ở controller
+            throw error;
+        }
+    }
+
     // Đăng nhập - kiểm tra email đã verify chưa
-    async login(email,  password){
+    async login(email,  password, auth_method = 'email'){
         const customer = await Customer.findOne({
-            where: { email: email }
+            where: { 
+                email: email,
+                auth_method : auth_method
+             }
         })
 
         if(!customer){
-            throw new Error("Sai mật khẩu hoặc tên đăng nhập");
+            throw new Error("Email chưa được đăng ký");
         }
 
         const isValid = await customer.comparePassword(password);
         if(!isValid) {
-            throw new Error("Sai mật khẩu hoặc tên đăng nhập");
+            throw new Error("Sai mật khẩu hoặc email");
         }
 
-        // Kiểm tra email đã verified chưa
+        
         const verifiedEmail = await VerifiedEmail.findOne({
             where: {
                 customer_uid: customer.uid,
                 email: customer.email,
+                auth_method : customer.auth_method,
                 is_verified: true
             }
         });
 
         // Nếu chưa verified, trả về thông tin để redirect
         if (!verifiedEmail) {
-            // Tạo OTP mới nếu không có OTP đang active
             const activeOTP = await VerifiedEmail.findOne({
                 where: {
                     customer_uid: customer.uid,
@@ -302,9 +386,12 @@ class CustomerService {
     }
 
     // Kiểm tra email tồn tại
-    async checkEmailExists(email) {
+    async checkEmailExists(email, auth_method = 'email') {
         const customer = await Customer.findOne({
-            where: { email: email }
+            where: { 
+                email: email,
+                auth_method : auth_method
+             }
         });
         return {
             exists: !!customer,
@@ -313,11 +400,12 @@ class CustomerService {
     }
 
     // Xác thực OTP
-    async verifyEmailOTP(customerId, email, otp) {
+    async verifyEmailOTP(customerId, email, otp, auth_method = 'email') {
         const customer = await Customer.findOne({
             where: { 
                 uid: customerId,
-                email: email 
+                email: email,
+                auth_method : auth_method
             }
         });
 
@@ -330,6 +418,7 @@ class CustomerService {
             where: {
                 customer_uid: customerId,
                 email: email,
+                auth_method : auth_method,
                 is_verified: false
             },
             order: [['created_at', 'DESC']]

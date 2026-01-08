@@ -21,6 +21,11 @@ const customerValidator = {
         'string.email': 'Email không hợp lệ',
         'any.required': 'Email là bắt buộc'
       }),
+
+    auth_method: Joi.string()
+      .valid('email', 'google')
+      .default('email')
+    ,
     
     password: Joi.string()
       .min(6)

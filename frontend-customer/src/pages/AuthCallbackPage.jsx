@@ -10,72 +10,83 @@ const AuthCallbackPage = () => {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        console.log("[CALLBACK] Processing OAuth callback...");
-        console.log("[CALLBACK] Current URL:", window.location.href);
+        console.log("[CALLBACK] Đang xử lý Google OAuth callback...");
         
-        // Đợi Supabase xử lý OAuth callback
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Lấy session từ Supabase
-        const { session, error: sessionError } = await supabaseAuthService.getSession();
-        
-        if (sessionError || !session?.user) {
-          console.error("[CALLBACK] No session found after OAuth:", sessionError);
-          throw new Error('Không thể lấy thông tin đăng nhập từ Google');
-        }
-
-        const user = session.user;
-        console.log("[CALLBACK] Google user authenticated:", user.email);
-        
-        // Lấy query parameters
+        // Lấy tham số từ URL
         const searchParams = new URLSearchParams(location.search);
         const tableId = searchParams.get('table');
         const token = searchParams.get('token');
-        const fromPath = searchParams.get('from_path') || '/menu';
-        const redirectTo = searchParams.get('redirect_to');
+        const from = searchParams.get('from') || '/menu';
         
-        console.log("[CALLBACK] Query params:", {
-          tableId,
-          token,
-          fromPath,
-          redirectTo
-        });
+        
+        // Kiểm tra session từ Supabase
+        const { session, error: sessionError } = await supabaseAuthService.getSession();
+        
+        if (sessionError || !session?.user) {
+          throw new Error('Không thể lấy thông tin từ Google');
+        }
 
-        // Đồng bộ user với backend
+        const user = session.user;
+
+        // Chuẩn bị data để đồng bộ 
+        const syncData = {
+          email: user.email,
+          username : user.user_metadata?.full_name || user.email.split('@')[0],
+        };
         
-        // Xác định nơi cần redirect
-        let finalRedirectPath = redirectTo || fromPath || '/menu';
+        // Gọi API đồng bộ qua customerService
+        // customerService cần có hàm syncGoogleUser
+        const syncResult = await customerService.syncGoogleUser(syncData);
+        
+        if (!syncResult.success) {
+          console.error("[CALLBACK] Đồng bộ thất bại:", syncResult.error);
+          throw new Error(syncResult.error || 'Không thể đồng bộ với hệ thống');
+        }
+
+        console.log("[CALLBACK] Đồng bộ thành công:", syncResult.data);
+        
+        // Lưu thông tin user vào localStorage (giống như login thường)
+        if (syncResult.data?.token) {
+          localStorage.setItem('customer_token', syncResult.data.token);
+          localStorage.setItem('customer_info', JSON.stringify(syncResult.data));
+          localStorage.setItem('auth_method', 'google');
+        }
+
+        // Tạo redirect path
+        let redirectPath = from;
         
         // Thêm query parameters nếu có
-        const finalParams = new URLSearchParams();
-        if (tableId) finalParams.append('table', tableId);
-        if (token) finalParams.append('token', token);
+        const params = new URLSearchParams();
+        if (tableId) params.append('table', tableId);
+        if (token) params.append('token', token);
         
-        if (finalParams.toString()) {
-          finalRedirectPath = finalRedirectPath.includes('?') 
-            ? `${finalRedirectPath}&${finalParams.toString()}`
-            : `${finalRedirectPath}?${finalParams.toString()}`;
+        if (params.toString()) {
+          redirectPath = redirectPath.includes('?') 
+            ? `${redirectPath}&${params.toString()}`
+            : `${redirectPath}?${params.toString()}`;
         }
+
+        console.log("[CALLBACK] Redirect về:", redirectPath);
         
-        console.log("[CALLBACK] Final redirect path:", finalRedirectPath);
-        
-        // Redirect về trang đích
-        navigate(finalRedirectPath, {
+        // Redirect về trang đích với thông tin user
+        navigate(redirectPath, {
           replace: true,
           state: {
-            message: 'Đăng nhập với Google thành công!',
+            message: 'Đăng nhập Google thành công!',
+            user: syncResult.data,
             socialLogin: true
           }
         });
 
-      } catch (error) {
-        console.error('[CALLBACK] Error:', error);
+      } catch (err) {
+        console.error('[CALLBACK] Lỗi:', err);
         
-        // Redirect về trang login với thông báo lỗi
-        navigate('/customer/login', {
+        // Redirect về login với thông báo lỗi
+        const loginPath = '/customer/login';
+        navigate(loginPath, {
           replace: true,
           state: {
-            error: error.message || 'Đăng nhập Google thất bại. Vui lòng thử lại.'
+            error: err.message || 'Đăng nhập thất bại. Vui lòng thử lại.'
           }
         });
       }
@@ -88,8 +99,8 @@ const AuthCallbackPage = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 to-orange-50">
       <div className="text-center">
         <div className="w-16 h-16 border-4 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Đang đăng nhập với Google...</h1>
-        <p className="text-gray-600">Vui lòng đợi trong giây lát</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Đang đăng nhập...</h1>
+        <p className="text-gray-600">Đang đồng bộ thông tin với hệ thống</p>
       </div>
     </div>
   );

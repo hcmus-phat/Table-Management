@@ -107,12 +107,13 @@ class OTPService {
   }
 
   // Kiểm tra trạng thái verification
-  async checkVerificationStatus(customerUid, email) {
+  async checkVerificationStatus(customerUid, email, auth_method ='email') {
     try {
       const verificationRecord = await VerifiedEmail.findOne({
         where: {
           customer_uid: customerUid,
           email: email,
+          auth_method : auth_method,
           is_verified: true
         },
         order: [['verified_at', 'DESC']]

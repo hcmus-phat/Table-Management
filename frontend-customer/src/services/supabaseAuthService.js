@@ -11,7 +11,7 @@ class SupabaseAuthService {
         provider: 'google',
         options: {
           redirectTo: redirectTo,
-          skipBrowserRedirect: false, // Đảm bảo redirect
+          skipBrowserRedirect: false,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent'

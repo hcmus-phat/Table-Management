@@ -25,6 +25,13 @@ VerifiedEmail.init(
         isEmail: true
       }
     },
+
+    auth_method: {
+      type: DataTypes.ENUM('email', 'google'),
+      allowNull: true,
+      defaultValue: 'email',
+    },
+    
     otp_code: {
       type: DataTypes.STRING(6),
       allowNull: true

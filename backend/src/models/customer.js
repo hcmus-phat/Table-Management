@@ -1,12 +1,26 @@
 import { DataTypes, Model } from "sequelize";
 import sequelize from "../config/database.js";
 import bcrypt from "bcryptjs";
-import VerifiedEmail from "./verifiedEmail.js"; // Import model VerifiedEmail
-
+import VerifiedEmail from "./verifiedEmail.js"; 
 class Customer extends Model {
   async comparePassword(candidatePassword) {
-    return await bcrypt.compare(candidatePassword, this.password);
-  }
+      // Nếu là Google user (không có password), luôn trả về false
+      if (this.auth_method === 'google') {
+        console.log("[MODEL] Google user - không kiểm tra password");
+        return false; 
+      }
+      
+      if (!this.password) {
+        throw new Error("Tài khoản không có mật khẩu. Vui lòng đặt lại mật khẩu.");
+      }
+      
+      if (!candidatePassword) {
+        return false;
+      }
+  
+      // So sánh password bình thường
+      return bcrypt.compare(candidatePassword, this.password);
+    }
 }
 
 Customer.init(
@@ -24,14 +38,19 @@ Customer.init(
     email: {
       type: DataTypes.STRING(100),
       allowNull: false,
-      unique: true,
+      unique: false,
       validate: {
         isEmail: true
       }
     },
+    auth_method: {
+      type: DataTypes.ENUM('email', 'google'),
+      allowNull: true,
+      defaultValue: 'email',
+    },
     password: {
       type: DataTypes.STRING(255),
-      allowNull: false,
+      allowNull: true,
     }
   },
   {

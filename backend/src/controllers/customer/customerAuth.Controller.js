@@ -15,7 +15,8 @@ export const register = async (req, res) => {
     }
 
     const { username, email, password } = req.body;
-    const result = await customerService.register(username, email, password);
+    const auth_method = 'email'
+    const result = await customerService.register(username, email, password, auth_method);
 
     const customerData = result.customer.toJSON();
     delete customerData.password;
@@ -44,6 +45,49 @@ export const register = async (req, res) => {
   }
 };
 
+
+// --- SYNC GOOGLE USER ---
+export const syncGoogleUser = async (req, res) => {
+  try {
+    const { username, email } = req.body;
+
+    // Validate input cơ bản
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: "Email là bắt buộc"
+      });
+    }
+
+    const auth_method = 'google'
+    // Gọi service để xử lý logic đồng bộ
+    const result = await customerService.syncGoogleUser(
+      username || email.split('@')[0],
+      email,
+      auth_method
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Đăng nhập Google thành công",
+      data: {
+        customer: {
+          username: result.customer.username,
+          email: result.customer.email,
+        },
+        accessToken: result.accessToken
+      }
+    });
+
+  } catch (error) {
+
+    return res.status(500).json({
+      success: false,
+      error: error.message || "Không thể đồng bộ với Google"
+    });
+  }
+};
+
 // --- LOGIN ---
 export const login = async (req, res) => {
   try {
@@ -58,7 +102,7 @@ export const login = async (req, res) => {
     const { email, password } = req.body;
     
     try {
-      // Thử login
+      
       const result = await customerService.login(email, password);
 
       const customerData = result.customer.toJSON();

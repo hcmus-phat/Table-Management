@@ -2,6 +2,7 @@ import express from "express";
 import { 
   register, 
   login, 
+  syncGoogleUser,
   getMe, 
   updateMe, 
   checkEmailExists,
@@ -20,6 +21,9 @@ const router = express.Router();
 // Đăng ký/Đăng nhập
 router.post("/register", register);
 router.post("/login", login);
+
+// Đồng bộ Google user (THÊM ROUTE MỚI)
+router.post("/sync-google", syncGoogleUser);
 
 // Kiểm tra email đã tồn tại chưa
 router.get("/check-email", checkEmailExists);

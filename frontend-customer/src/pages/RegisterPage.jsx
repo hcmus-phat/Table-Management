@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import customerService from "../services/customerService";
-import { debounce } from "lodash"; // Nếu chưa có, cài đặt: npm install lodash
+import { debounce } from "lodash"; 
 
 const RegisterPage = () => {
 	const [formData, setFormData] = useState({
@@ -20,7 +20,7 @@ const RegisterPage = () => {
 	const [success, setSuccess] = useState("");
 	const [loading, setLoading] = useState(false);
 	const [emailChecking, setEmailChecking] = useState(false);
-	const [emailAvailable, setEmailAvailable] = useState(null); // null: chưa kiểm tra, true: có thể dùng, false: đã tồn tại
+	const [emailAvailable, setEmailAvailable] = useState(null); 
 	const navigate = useNavigate();
 	const location = useLocation();
 
