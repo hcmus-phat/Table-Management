@@ -1,11 +1,13 @@
 import OrderItemService from "../../services/orderItem.service.js";
+import db from '../../models/index.js';
+const { Order, OrderItem, OrderItemModifier, MenuItem, ModifierOption, Table } = db;
 
-// POST: Tạo mới OrderItem
+// POST: Tạo mới OrderItem (Khách gọi thêm 1 món lẻ)
 export const createOrderItem = async (req, res) => {
     try {
         const { order_id, menu_item_id } = req.body;
 
-        // Validate cơ bản tại controller
+        // 1. Validate cơ bản
         if (!order_id || !menu_item_id) {
             return res.status(400).json({
                 success: false,
@@ -13,16 +15,84 @@ export const createOrderItem = async (req, res) => {
             });
         }
 
-        const result = await OrderItemService.createOrderItem(req.body);
+        // ✅ 2. KIỂM TRA ORDER CÓ TỒN TẠI KHÔNG
+        const existingOrder = await Order.findByPk(order_id);
+        if (!existingOrder) {
+            return res.status(404).json({
+                success: false,
+                message: `Order ID ${order_id} không tồn tại. Vui lòng tạo đơn mới.`,
+                code: 'ORDER_NOT_FOUND'
+            });
+        }
+
+        // ✅ 3. KIỂM TRA ORDER ĐÃ HOÀN TẤT/HỦY CHƯA
+        if (['completed', 'cancelled'].includes(existingOrder.status)) {
+            return res.status(400).json({
+                success: false,
+                message: `Order đã ${existingOrder.status === 'completed' ? 'hoàn tất' : 'bị hủy'}. Không thể thêm món.`,
+                code: 'ORDER_CLOSED'
+            });
+        }
+
+        // 4. Gọi Service tạo món
+        // Service này sẽ INSERT vào DB với status mặc định là 'pending'
+        await OrderItemService.createOrderItem(req.body);
+
+        // 3. [QUAN TRỌNG] Lấy lại toàn bộ thông tin đơn hàng để bắn Socket
+        // Query này y hệt bên Kitchen Controller để đảm bảo dữ liệu đồng nhất
+        const fullOrder = await Order.findByPk(order_id, {
+            include: [
+                { 
+                    model: Table, 
+                    as: 'table',
+                    attributes: ['id', 'table_number'] 
+                }, 
+                { 
+                    model: OrderItem, 
+                    as: 'items',
+                    include: [
+                        { 
+                            model: MenuItem, 
+                            as: 'menu_item', 
+                            attributes: ['id', 'name', 'price', 'prep_time_minutes']
+                        },
+                        {
+                            model: OrderItemModifier,
+                            as: 'modifiers',
+                            include: [{
+                                model: ModifierOption,
+                                as: 'modifier_option',
+                                attributes: ['id', 'name', 'price_adjustment']
+                            }]
+                        }
+                    ]
+                }
+            ]
+        });
+
+        if (fullOrder) {
+            // 4. Bắn Socket cho Waiter - Khách đặt món MỚI
+            if (req.io) {
+                // ✅ Event rõ ràng: Đơn mới từ khách (chưa duyệt)
+                req.io.emit('new_order_created', fullOrder);
+                
+                // Bắn riêng cho bàn đó (để khách thấy món mình vừa đặt hiện lên ngay)
+                if (fullOrder.table) {
+                    req.io.emit(`order_update_table_${fullOrder.table.id}`, fullOrder);
+                }
+
+                console.log(`🔔 Socket sent: new_order_created for Table ${fullOrder.table?.table_number}`);
+            }
+        }
 
         res.status(201).json({
             success: true,
-            message: 'Thêm món ăn vào đơn hàng thành công',
-            data: result
+            message: 'Thêm món ăn thành công',
+            data: fullOrder
         });
+
     } catch (error) {
         console.error('Lỗi Controller Create:', error);
-
         res.status(500).json({
             success: false,
             message: 'Lỗi server khi thêm món ăn',

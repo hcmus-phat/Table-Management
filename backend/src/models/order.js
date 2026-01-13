@@ -14,7 +14,7 @@ Order.init(
 
     customer_id: {
       type: DataTypes.UUID,
-      allowNull: true, //cho phép null trường hợp không đăng nhập
+      allowNull: true,
       references: {
         model: "customers",
         key: "uid",
@@ -39,31 +39,45 @@ Order.init(
       },
     },
 
+    // --- SỬA LẠI ĐOẠN NÀY (Chỉ giữ 1 cái status duy nhất) ---
+    status: {
+      type: DataTypes.ENUM(
+        "pending",    // Khách vừa đặt
+        "confirmed",  // [MỚI] Waiter đã xác nhận -> Chuyển xuống bếp
+        "preparing",  // Bếp đang nấu
+        "ready",      // Bếp nấu xong
+        "served",     // Đã mang ra bàn
+        "payment",    // Khách gọi thanh toán
+        "completed",  // Đã thanh toán xong
+        "cancelled"   // Đã hủy
+      ),
+      allowNull: false,
+      defaultValue: "pending",
+    },
+    // -------------------------------------------------------
+
     ordered_at: {
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    // Thời gian hoàn thành
+    
     completed_at: {
       type: DataTypes.DATE,
       allowNull: true,
     },
 
-    status: {
+    payment_method: {
       type: DataTypes.STRING(20),
-      allowNull: false,
-      type: DataTypes.ENUM(
-        "pending",
-        "confirmed",
-        "preparing",
-        "ready",
-        "served",
-        "payment",
-        "completed",
-        "cancelled"
-      ),
-      defaultValue: "pending",
+      allowNull: true,
+      validate: {
+        isIn: [['cash', 'momo', 'vnpay', 'zalopay', 'stripe']]
+      }
+    },
+
+    transaction_id: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
     },
   },
   {
@@ -87,14 +101,14 @@ Order.init(
 );
 
 Order.associate = (models) => {
-  Order.hasMany(models.OrderItem, {
-    foreignKey: "order_id",
-    as: "items",
+  Order.belongsTo(models.Table, { 
+    foreignKey: 'table_id', 
+    as: 'table' 
   });
 
-  Order.belongsTo(models.Table, {
-    foreignKey: "table_id",
-    as: "table",
+  Order.hasMany(models.OrderItem, { 
+    foreignKey: 'order_id', 
+    as: 'items' 
   });
 };
 

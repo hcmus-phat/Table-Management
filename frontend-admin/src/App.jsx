@@ -5,17 +5,18 @@ import {
   Route,
   Navigate,
   Outlet,
-} from "react-router-dom"; // Thêm Outlet
+} from "react-router-dom";
 import Layout from "./components/layout/Layout";
 import TableList from "./components/tables/TableList";
 import TableForm from "./components/tables/TableForm";
 import QRCodePage from "./components/tables/QRCodePage";
 import Login from "./pages/Login";
 import UserManagement from "./pages/admin/UserManagement";
-import SuperAdminRoute from "./components/common/SuperAdminRoute";
+// ĐÃ XÓA IMPORT SuperAdminRoute
 import HomeRedirect from "./components/common/HomeRedirect";
 import EmployeeManagement from "./pages/admin/EmployeeManagement";
 import Kitchen from "./pages/Kitchen";
+import WaiterPage from "./pages/waiter/WaiterPage";
 
 import {
   CategoryList,
@@ -25,59 +26,86 @@ import {
 } from "./components/admin/menu";
 import "./App.css";
 
-// --- TẠO THÊM COMPONENT BẢO VỆ ---
-// Nhiệm vụ: Kiểm tra xem có Token chưa?
-// Có -> Cho vào trong (Outlet)
-// Không -> Đá về trang Login
-const ProtectedRoute = () => {
-  const token = localStorage.getItem("token"); // Lấy vé trong túi ra xem
-  return token ? <Outlet /> : <Navigate to="/login" replace />;
+// --- 1. HÀM LẤY ROLE TỪ TOKEN ---
+const getUserRole = () => {
+  const token = localStorage.getItem("token");
+  if (!token) return null;
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+    return JSON.parse(jsonPayload).role; 
+  } catch (e) {
+    return null;
+  }
+};
+
+// --- 2. COMPONENT BẢO VỆ CHUNG (RoleRoute) ---
+const RoleRoute = ({ allowedRoles }) => {
+  const token = localStorage.getItem("token");
+  const role = getUserRole();
+
+  if (!token) return <Navigate to="/login" replace />;
+
+  // Nếu Role hợp lệ -> Cho vào
+  if (allowedRoles.includes(role)) {
+    return <Outlet />;
+  }
+
+  // Nếu sai quyền -> Đá về chuồng
+  if (role === 'kitchen') return <Navigate to="/kitchen" replace />;
+  if (role === 'waiter') return <Navigate to="/waiter" replace />;
+  
+  return <Navigate to="/" replace />;
 };
 
 function App() {
   return (
-    // 1. PHẢI CÓ THẺ ROUTER BAO NGOÀI CÙNG
     <Router>
       <Routes>
-        {/* Route Login (Ai cũng vào được) */}
         <Route path="/login" element={<Login />} />
 
-        {/* --- KHU VỰC BẢO VỆ (PHẢI CÓ TOKEN MỚI ĐƯỢC VÀO) --- */}
-        <Route element={<ProtectedRoute />}>
-          {/* Kitchen Display - Full screen without Layout */}
-          <Route path="/kitchen" element={<Kitchen />} />
+        {/* 1. KHU VỰC BẾP */}
+        <Route element={<RoleRoute allowedRoles={['kitchen']} />}>
+           <Route path="/kitchen" element={<Kitchen />} />
+        </Route>
 
+        {/* 2. KHU VỰC WAITER */}
+        <Route element={<RoleRoute allowedRoles={['waiter']} />}>
+           <Route path="/waiter" element={<WaiterPage />} />
+        </Route>
+
+        {/* 3. KHU VỰC QUẢN LÝ (ADMIN) */}
+        <Route element={<RoleRoute allowedRoles={['admin', 'super_admin']} />}>
           <Route element={<Layout />}>
-            {/* - Nếu chưa có token: ProtectedRoute ở trên đã đá về /login rồi */}
             <Route path="/" element={<HomeRedirect />} />
 
-            {/* Admin Table routes */}
+            {/* Admin Routes */}
             <Route path="/tables" element={<TableList />} />
             <Route path="/tables/new" element={<TableForm />} />
             <Route path="/tables/:id" element={<TableForm />} />
             <Route path="/tables/:id/qr" element={<QRCodePage />} />
 
-            {/* Menu Admin routes */}
             <Route path="/admin/menu/categories" element={<CategoryList />} />
             <Route path="/admin/menu/items" element={<MenuItemList />} />
             <Route path="/admin/menu/items/new" element={<MenuItemForm />} />
             <Route path="/admin/menu/items/:id" element={<MenuItemForm />} />
-            <Route
-              path="/admin/menu/modifiers"
-              element={<ModifierGroupList />}
-            />
-            {/* Employee Management */}
+            <Route path="/admin/menu/modifiers" element={<ModifierGroupList />} />
+            
             <Route path="/admin/employees" element={<EmployeeManagement />} />
 
-            {/* Superadmin page */}
-            <Route element={<SuperAdminRoute />}>
+            {/* --- 4. KHU VỰC SUPER ADMIN (Dùng RoleRoute luôn) --- */}
+            {/* Chỉ user có role 'super_admin' mới vào được đây */}
+            <Route element={<RoleRoute allowedRoles={['super_admin']} />}>
               <Route path="/admin/users" element={<UserManagement />} />
             </Route>
 
-            {/* 404 Route... (Giữ nguyên code cũ của bạn đoạn này) */}
             <Route path="*" element={<div>404 Not Found</div>} />
           </Route>
         </Route>
+
       </Routes>
     </Router>
   );

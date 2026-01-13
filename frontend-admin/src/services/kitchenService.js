@@ -28,6 +28,20 @@ const kitchenService = {
     }
   },
 
+  // ✅ Cập nhật status của TỪNG MÓN (OrderItem)
+  updateOrderItemStatus: async (itemId, status) => {
+    try {
+      const response = await adminApi.put(
+        `/kitchen/items/${itemId}/status`,
+        { status }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error updating item status:", error);
+      throw error;
+    }
+  },
+
   // Lấy thống kê
   getKitchenStats: async () => {
     try {

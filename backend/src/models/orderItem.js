@@ -27,6 +27,24 @@ OrderItem.init(
       type: DataTypes.DECIMAL(12, 2),
       allowNull: false,
     },
+
+    // --- CẬP NHẬT PHẦN NÀY ---
+    status: {
+      type: DataTypes.ENUM(
+        'pending',    // Mới đặt
+        'confirmed',  // Waiter đã duyệt món này
+        'preparing',  // Bếp đang làm
+        'ready',      // Đã xong, chờ bưng
+        'served',     // Đã lên bàn
+        'cancelled'   // Hết món hoặc khách hủy
+        // ❌ KHÔNG CÓ 'payment' và 'completed' ở Item level
+        // Items kết thúc ở 'served', Order mới có 'payment'/'completed'
+      ),
+      defaultValue: 'pending',
+      allowNull: false
+    },
+    // -------------------------
+    
     notes: {
       type: DataTypes.TEXT,
       allowNull: true,
@@ -36,30 +54,29 @@ OrderItem.init(
     sequelize,
     tableName: "order_items",
     modelName: "OrderItem",
-    timestamps: false, // Giữ false nếu bạn không cần created_at cho từng item
+    timestamps: false, 
     underscored: true,
   }
 );
 
-// Định nghĩa associate theo form của ModifierOption
 OrderItem.associate = (models) => {
-  // Quan hệ với đơn hàng
-  OrderItem.belongsTo(models.Order, {
-    foreignKey: "order_id",
-    as: "order",
+  // Thuộc về Order
+  OrderItem.belongsTo(models.Order, { 
+    foreignKey: 'order_id', 
+    as: 'order' 
   });
 
-  // Quan hệ với món ăn
-  OrderItem.belongsTo(models.MenuItem, {
-    foreignKey: "menu_item_id",
-    as: "menu_item",
-    constraints: false,
+  // Thuộc về Menu Item (Món gốc)
+  OrderItem.belongsTo(models.MenuItem, { 
+    foreignKey: 'menu_item_id', 
+    as: 'menu_item',
+    constraints: false 
   });
 
-  // Quan hệ với OrderItemModifier
+  // Có nhiều Modifier (Topping)
   OrderItem.hasMany(models.OrderItemModifier, {
-    foreignKey: "order_item_id",
-    as: "modifiers",
+    foreignKey: 'order_item_id',
+    as: 'modifiers'
   });
 };
 

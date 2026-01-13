@@ -1,6 +1,5 @@
-import OrderItem from "../models/orderItem.js";
-import MenuItem from "../models/menuItem.js";
-import OrderItemModifier from "../models/orderItemModifier.js";
+// services/orderItem.service.js
+import db from '../models/index.js'; // Import từ db chung
 
 class OrderItemService {
   /**
@@ -13,10 +12,12 @@ class OrderItemService {
       quantity,
       price_at_order,
       notes,
-      modifiers,
+      modifiers, // Lấy modifiers từ data
     } = data;
 
-    const newItem = await OrderItem.create({
+    // 1. Tạo OrderItem
+    // Dùng db.OrderItem thay vì OrderItem để đảm bảo đồng bộ
+    const newItem = await db.OrderItem.create({
       order_id,
       menu_item_id,
       quantity: quantity || 1,
@@ -24,14 +25,15 @@ class OrderItemService {
       notes: notes || null,
     });
 
-    // Nếu có modifiers, tạo các OrderItemModifier
+    // 2. [QUAN TRỌNG] Lưu Modifiers (Giữ logic từ HEAD)
     if (modifiers && Array.isArray(modifiers) && modifiers.length > 0) {
       const modifierRecords = modifiers.map((modifier) => ({
         order_item_id: newItem.id,
-        modifier_option_id: modifier.optionId,
+        modifier_option_id: modifier.optionId || modifier.id, // Support cả 2 format id
       }));
 
-      await OrderItemModifier.bulkCreate(modifierRecords);
+      // Dùng db.OrderItemModifier
+      await db.OrderItemModifier.bulkCreate(modifierRecords);
     }
 
     return {
@@ -49,12 +51,13 @@ class OrderItemService {
    * Lấy danh sách món ăn theo Order ID và format dữ liệu
    */
   async getItemsByOrderId(orderId) {
-    const items = await OrderItem.findAll({
+    // Dùng db.OrderItem
+    const items = await db.OrderItem.findAll({
       where: { order_id: orderId },
       include: [
         {
-          model: MenuItem,
-          as: "menu_item",
+          model: db.MenuItem,
+          as: "menu_item", // [QUAN TRỌNG] Giữ là 'menu_item' (snake_case) như đã fix ở index.js
           attributes: ["name"],
         },
       ],
@@ -67,6 +70,7 @@ class OrderItemService {
       return {
         id: item.id,
         menu_item_id: item.menu_item_id,
+        // Gọi đúng alias menu_item
         menu_item_name: item.menu_item?.name || "Món ăn không tồn tại",
         price_at_order: price,
         quantity: qty,

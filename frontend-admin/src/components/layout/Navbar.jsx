@@ -27,9 +27,11 @@ const Navbar = () => {
     return location.pathname.startsWith("/admin/menu");
   };
 
+  // Logic logo: Bếp về bếp, Phục vụ về phục vụ, Admin về bàn
   const getLogoLink = () => {
     if (role === "super_admin") return "/admin/users";
     if (role === "kitchen") return "/kitchen";
+    if (role === "waiter") return "/waiter";
     return "/tables";
   };
 
@@ -65,8 +67,9 @@ const Navbar = () => {
 
             {/* Navigation Links */}
             <div className="flex items-center gap-2">
-              {/* Tables Link */}
-              {role !== "super_admin" && (
+              
+              {/* 1. TABLES LINK (Chỉ Admin và Waiter cần xem bàn) */}
+              {(role === "admin" || role === "waiter") && (
                 <Link
                   to="/tables"
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -94,8 +97,8 @@ const Navbar = () => {
                 </Link>
               )}
 
-              {/* Menu Dropdown */}
-              {role !== "super_admin" && (
+              {/* 2. MENU DROPDOWN (Chỉ Admin mới được sửa Menu) */}
+              {role === "admin" && (
                 <div className="relative">
                   <button
                     onClick={() => setMenuOpen(!menuOpen)}
@@ -164,7 +167,7 @@ const Navbar = () => {
                 </div>
               )}
 
-              {/* Link Super Admin */}
+              {/* 3. SUPER ADMIN LINK */}
               {role === "super_admin" && (
                 <Link
                   to="/admin/users"
@@ -193,7 +196,7 @@ const Navbar = () => {
                 </Link>
               )}
 
-              {/* Link Admin (Nhân viên) */}
+              {/* 4. ADMIN LINK (Nhân viên) */}
               {role === "admin" && (
                 <Link
                   to="/admin/employees"
@@ -222,8 +225,8 @@ const Navbar = () => {
                 </Link>
               )}
 
-              {/* Kitchen Link */}
-              {role !== "super_admin" && (
+              {/* 5. KITCHEN LINK (CHỈ ROLE KITCHEN THẤY) */}
+              {role === "kitchen" && (
                 <Link
                   to="/kitchen"
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -235,6 +238,23 @@ const Navbar = () => {
                   <span className="flex items-center gap-2">
                     <span className="text-lg">🍳</span>
                     Kitchen
+                  </span>
+                </Link>
+              )}
+
+              {/* 6. WAITER LINK (CHỈ ROLE WAITER THẤY) - Thêm mới */}
+              {role === "waiter" && (
+                <Link
+                  to="/waiter"
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    isActive("/waiter")
+                      ? "bg-purple-50 text-purple-600"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="text-lg">🛎️</span>
+                    Phục vụ
                   </span>
                 </Link>
               )}
@@ -272,7 +292,7 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* Overlay khi mở menu */}
+      {/* Overlay */}
       {menuOpen && (
         <div
           className="fixed inset-0 z-20"

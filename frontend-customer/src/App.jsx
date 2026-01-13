@@ -26,6 +26,7 @@ function App() {
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         {/* Customer-facing menu route - NHẬN QUERY PARAMETERS */}
         <Route path="/menu" element={<MenuPage />} />
+
         
         {/* Customer auth routes */}
         <Route path="/customer/login" element={<CustomerLoginPage />} />

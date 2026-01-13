@@ -49,16 +49,16 @@ OrderItemModifier.init(
 );
 
 OrderItemModifier.associate = (models) => {
-  // Quan hệ với OrderItem
+  // Thuộc về món trong đơn
   OrderItemModifier.belongsTo(models.OrderItem, {
-    foreignKey: "order_item_id",
-    as: "order_item",
+    foreignKey: 'order_item_id',
+    as: 'order_item'
   });
 
-  // Quan hệ với ModifierOption
+  // Liên kết với Option gốc để lấy tên
   OrderItemModifier.belongsTo(models.ModifierOption, {
-    foreignKey: "modifier_option_id",
-    as: "modifier_option",
+    foreignKey: 'modifier_option_id',
+    as: 'modifier_option'
   });
 };
 
