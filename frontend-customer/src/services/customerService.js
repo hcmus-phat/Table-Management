@@ -348,14 +348,18 @@ class CustomerService {
     const token = this.getToken();
     const apiExecutor = token ? customerApi : publicApi;
 
+    console.log('📦 createOrderWithItems - cartItems:', cartItems);
+
     const itemPromises = cartItems.map(async (item) => {
       const itemData = {
         order_id: orderId,
         menu_item_id: item.id,
         quantity: Number(item.quantity) || 1,
         price_at_order: Number(item.price) || 0,
-        notes: item.notes || "",
+        notes: item.notes || item.note || "",  // Support both notes and note
+        modifiers: item.modifiers
       };
+      console.log('📤 Sending item:', itemData);
       return await apiExecutor.post("/customer/order-items", itemData);
     });
 
@@ -482,6 +486,8 @@ class CustomerService {
       const token = this.getToken();
       const apiExecutor = token ? customerApi : publicApi;
 
+      console.log('📦 addItemsToOrder - cartItems:', cartItems);
+
       // Duyệt qua từng món trong giỏ và gửi lên server
       const itemPromises = cartItems.map(async (item) => {
         const itemData = {
@@ -489,8 +495,10 @@ class CustomerService {
           menu_item_id: item.id,
           quantity: Number(item.quantity) || 1,
           price_at_order: Number(item.price) || 0,
-          notes: item.notes || "",
+          notes: item.notes || item.note || "",  // Support both notes and note
+          modifiers: item.modifiers,
         };
+        console.log('📤 Sending item:', itemData);
         // Gọi API Backend: POST /customer/order-items
         return await apiExecutor.post("/customer/order-items", itemData);
       });
@@ -617,6 +625,18 @@ class CustomerService {
 
   // ========== PAYMENT METHODS ==========
   
+  // Lấy active order của bàn (dùng khi reload page)
+  async getActiveOrder(tableId) {
+    try {
+      const response = await publicApi.get(`/customer/tables/${tableId}/active-order`);
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error || error.message || "Không thể lấy thông tin đơn hàng"
+      );
+    }
+  }
+
   // Yêu cầu thanh toán
   async requestPayment(orderId, paymentMethod = 'cash') {
     try {

@@ -16,7 +16,6 @@ import CartButton from "./CartButton";
 import ModifierModal from "./ModifierModal";
 import useCart from "./hooks/useCart";
 
-import OrderTrackingBar from "./OrderTrackingBar";
 import OrderDetailModal from "./OrderDetailModal";
 import MenuItemDetailModal from "./MenuItemDetailModal";
 import FloatingOrderButton from "./FloatingOrderButton";
@@ -244,8 +243,8 @@ const MenuPage = () => {
         handleCustomize(item);
     };
 
-    const handleAddFromModal = (item, modifiers, quantity, modifiersTotalPrice) => {
-        addToCart(item, modifiers, quantity, modifiersTotalPrice);
+    const handleAddFromModal = (item, modifiers, quantity, modifiersTotalPrice, note) => {
+        addToCart(item, modifiers, quantity, modifiersTotalPrice, note);
         setSelectedItem(null);
         showToast('success', `Đã thêm ${item.name} vào giỏ`);
     };

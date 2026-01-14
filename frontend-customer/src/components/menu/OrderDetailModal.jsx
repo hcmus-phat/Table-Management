@@ -63,7 +63,7 @@ const OrderDetailModal = ({ order, onClose, onRequestBill }) => {
           <div className={`mb-5 flex justify-between items-center p-3 rounded-xl border border-dashed ${orderStatusInfo.color.replace('text-', 'border-').replace('800', '200')}`}>
             <span className="text-sm font-bold flex items-center gap-2">
                 {orderStatusInfo.icon}
-                Trạng thái chung:
+                Trạng thái chung: 
             </span>
             <span className={`px-3 py-1 rounded-lg text-xs font-bold shadow-sm ${orderStatusInfo.color}`}>
               {orderStatusInfo.text}
@@ -107,7 +107,16 @@ const OrderDetailModal = ({ order, onClose, onRequestBill }) => {
                   {item.modifiers && item.modifiers.length > 0 && (
                     <div className="text-[11px] text-gray-500 mt-1 space-y-0.5">
                       {item.modifiers.map((mod, idx) => (
-                          <p key={idx}>+ {mod.modifier_option?.name || mod.name}</p>
+                        <div key={idx} className="flex justify-between w-full pr-4">
+                          <span>+ {mod.modifier_option?.name || mod.name}</span>
+                          
+                          {/* Chỉ hiện giá nếu lớn hơn 0 */}
+                          {(mod.price > 0 || mod.price_adjustment > 0) && (
+                              <span className="font-medium text-gray-700">
+                                  {formatCurrency(mod.price || mod.price_adjustment)}
+                              </span>
+                          )}
+                        </div>
                       ))}
                     </div>
                   )}

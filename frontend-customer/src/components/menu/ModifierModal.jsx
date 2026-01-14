@@ -22,7 +22,7 @@ const ModifierModalContent = ({ item, onClose, onAddToCart }) => {
 						[groupId]: [option],
 					};
 				} else {
-					// Allow deselection for single select
+					// Allow deselFection for single select
 					return {
 						...prev,
 						[groupId]: [],

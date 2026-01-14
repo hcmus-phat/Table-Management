@@ -38,6 +38,7 @@ export const createOrderItem = async (req, res) => {
         // Service này sẽ INSERT vào DB với status mặc định là 'pending'
         await OrderItemService.createOrderItem(req.body);
 
+
         if (['ready', 'served'].includes(existingOrder.status)) {
             console.log(`🔔 Đánh thức đơn hàng ${order_id}: ${existingOrder.status} -> pending`);
             existingOrder.status = 'pending';

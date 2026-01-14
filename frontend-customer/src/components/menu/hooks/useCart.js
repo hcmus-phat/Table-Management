@@ -22,6 +22,12 @@ const useCart = () => {
 		return cart.reduce((sum, item) => sum + item.total, 0);
 	}, [cart]);
 
+
+  const calculateTotal = (price, qty) => {
+      // Nếu là VND thì thường làm tròn thành số nguyên luôn
+      return Math.round(price * qty); 
+      // Nếu là USD thì dùng: Math.round(price * qty * 100) / 100;
+  };
 	// Add item to cart with optional modifiers and note
 	const addToCart = (
 		item,
@@ -56,7 +62,7 @@ const useCart = () => {
 				modifiersTotalPrice,
 				unitPrice,
 				quantity,
-				total: unitPrice * quantity,
+				total: calculateTotal(unitPrice, quantity),
 				note: note.trim(),
 			};
 			setCart([...cart, cartItem]);
@@ -95,7 +101,7 @@ const useCart = () => {
 				return {
 					...item,
 					quantity: newQuantity,
-					total: newQuantity * item.unitPrice,
+					total: calculateTotal(item.unitPrice, newQuantity),
 				};
 			}
 			return item;
