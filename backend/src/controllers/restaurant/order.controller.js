@@ -219,6 +219,3 @@ export const updateOrderStatus = async (req, res) => {
         return res.status(500).json({ success: false, message: 'Lỗi server' });
     }
 };
-
-// ❌ REMOVED: updateOrderItemStatus duplicate
-// Use /api/admin/kitchen/items/:itemId/status instead (kitchen.controller.js has better logic with auto-update Order status)

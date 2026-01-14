@@ -18,9 +18,10 @@ router.get("/orders", getKitchenOrders);
 // GET /api/admin/kitchen/stats - Lấy thống kê
 router.get("/stats", getKitchenStats);
 
-// PATCH /api/admin/kitchen/orders/:id/status - Cập nhật trạng thái đơn hàng
+// PATCH /api/admin/kitchen/orders/:orderId/status - Cập nhật trạng thái đơn hàng
 router.patch("/orders/:orderId/status", updateOrderStatus);
 
+// PUT /api/admin/kitchen/items/:itemId/status
 router.put('/items/:itemId/status', updateOrderItemStatus)
 
 export default router;
