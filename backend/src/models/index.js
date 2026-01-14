@@ -1,3 +1,4 @@
+// src/models/index.js
 import sequelize from '../config/database.js';
 
 // 1. Import ĐẦY ĐỦ các model
@@ -9,8 +10,9 @@ import MenuItemPhoto from './menuItemPhoto.js';
 import ModifierGroup from './modifierGroup.js';
 import ModifierOption from './modifierOption.js';
 import MenuItemModifierGroup from './menuItemModifierGroup.js';
-import Order from './order.js';      // <--- THÊM MỚI
-import OrderItem from './orderItem.js'; // <--- THÊM MỚI
+import Order from './order.js';      
+import OrderItem from './orderItem.js'; 
+import OrderItemModifier from "./orderItemModifier.js";
 
 // 2. Gom vào object db
 const db = {
@@ -23,15 +25,17 @@ const db = {
   ModifierGroup,
   ModifierOption,
   MenuItemModifierGroup,
-  Order,      // <--- ĐƯA VÀO ĐÂY
-  OrderItem   // <--- ĐƯA VÀO ĐÂY
+  Order,     
+  OrderItem,
+  OrderItemModifier, 
 };
 
 // 3. CHẠY VÒNG LẶP LIÊN KẾT (Magic Loop)
-Object.keys(db).forEach(modelName => {
+Object.keys(db).forEach((modelName) => {
   if (db[modelName].associate) {
     db[modelName].associate(db);
   }
 });
+
 
 export default db;

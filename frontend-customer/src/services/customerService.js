@@ -14,7 +14,9 @@ class CustomerService {
       });
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.error || error.message || "Đăng ký thất bại");
+      throw new Error(
+        error.response?.data?.error || error.message || "Đăng ký thất bại"
+      );
     }
   }
 
@@ -73,14 +75,14 @@ class CustomerService {
           customerId: response.data.data?.customerId,
           email: response.data.data?.email,
           username: response.data.data?.username,
-          message: response.data.message || "Vui lòng xác thực email"
+          message: response.data.message || "Vui lòng xác thực email",
         };
       }
 
       // Nếu đăng nhập thành công
       if (response.data.success && response.data.data) {
         const { customer, accessToken } = response.data.data;
-        
+
         localStorage.setItem("customer_token", accessToken);
         localStorage.setItem("customer_info", JSON.stringify(customer));
         localStorage.setItem("auth_method", "email");
@@ -89,14 +91,15 @@ class CustomerService {
           success: true,
           customer,
           accessToken,
-          message: response.data.message
+          message: response.data.message,
         };
       }
 
       throw new Error(response.data.error || "Đăng nhập thất bại");
-
     } catch (error) {
-      throw new Error(error.response?.data?.error || error.message || "Đăng nhập thất bại");
+      throw new Error(
+        error.response?.data?.error || error.message || "Đăng nhập thất bại"
+      );
     }
   }
 
@@ -106,14 +109,17 @@ class CustomerService {
       const response = await publicApi.post("/customer/verify-email", {
         customerId,
         email,
-        otp
+        otp,
       });
       return response.data;
     } catch (error) {
       console.error("Verify OTP error:", error);
       return {
         success: false,
-        error: error.response?.data?.error || error.message || "Xác thực OTP thất bại"
+        error:
+          error.response?.data?.error ||
+          error.message ||
+          "Xác thực OTP thất bại",
       };
     }
   }
@@ -123,14 +129,17 @@ class CustomerService {
     try {
       const response = await publicApi.post("/customer/resend-otp", {
         customerId,
-        email
+        email,
       });
       return response.data;
     } catch (error) {
       console.error("Resend OTP error:", error);
       return {
         success: false,
-        error: error.response?.data?.error || error.message || "Không thể gửi lại OTP"
+        error:
+          error.response?.data?.error ||
+          error.message ||
+          "Không thể gửi lại OTP",
       };
     }
   }
@@ -139,14 +148,14 @@ class CustomerService {
   async checkVerificationStatus(customerId, email) {
     try {
       const response = await publicApi.get("/customer/check-verification", {
-        params: { customerId, email }
+        params: { customerId, email },
       });
       return response.data;
     } catch (error) {
       console.error("Check verification error:", error);
       return {
         success: false,
-        error: error.message || "Không thể kiểm tra trạng thái xác thực"
+        error: error.message || "Không thể kiểm tra trạng thái xác thực",
       };
     }
   }
@@ -155,14 +164,14 @@ class CustomerService {
   async checkEmailExists(email) {
     try {
       const response = await publicApi.get("/customer/check-email", {
-        params: { email }
+        params: { email },
       });
       return response.data;
     } catch (error) {
       console.error("Check email error:", error);
       return {
         success: false,
-        error: error.message || "Không thể kiểm tra email"
+        error: error.message || "Không thể kiểm tra email",
       };
     }
   }
@@ -172,15 +181,19 @@ class CustomerService {
   // Gửi OTP quên mật khẩu
   async sendForgotPasswordOTP(email) {
     try {
-      const response = await publicApi.post("/customer/forgot-password/send-otp", {
-        email
-      });
+      const response = await publicApi.post(
+        "/customer/forgot-password/send-otp",
+        {
+          email,
+        }
+      );
       return response.data;
     } catch (error) {
       console.error("Send forgot password OTP error:", error);
       return {
         success: false,
-        error: error.response?.data?.error || error.message || "Không thể gửi OTP"
+        error:
+          error.response?.data?.error || error.message || "Không thể gửi OTP",
       };
     }
   }
@@ -188,16 +201,22 @@ class CustomerService {
   // Xác thực OTP quên mật khẩu
   async verifyForgotPasswordOTP(email, otp) {
     try {
-      const response = await publicApi.post("/customer/forgot-password/verify-otp", {
-        email,
-        otp
-      });
+      const response = await publicApi.post(
+        "/customer/forgot-password/verify-otp",
+        {
+          email,
+          otp,
+        }
+      );
       return response.data;
     } catch (error) {
       console.error("Verify forgot password OTP error:", error);
       return {
         success: false,
-        error: error.response?.data?.error || error.message || "Xác thực OTP thất bại"
+        error:
+          error.response?.data?.error ||
+          error.message ||
+          "Xác thực OTP thất bại",
       };
     }
   }
@@ -209,14 +228,17 @@ class CustomerService {
         email,
         otp,
         newPassword,
-        confirmPassword
+        confirmPassword,
       });
       return response.data;
     } catch (error) {
       console.error("Reset password error:", error);
       return {
         success: false,
-        error: error.response?.data?.error || error.message || "Không thể đặt lại mật khẩu"
+        error:
+          error.response?.data?.error ||
+          error.message ||
+          "Không thể đặt lại mật khẩu",
       };
     }
   }
@@ -227,12 +249,16 @@ class CustomerService {
       if (!this.isLoggedIn()) {
         throw new Error("Chưa đăng nhập");
       }
-      
+
       const response = await customerApi.get("/customer/me");
       return response.data;
     } catch (error) {
       console.error("Get me error:", error);
-      throw new Error(error.response?.data?.error || error.message || "Không thể lấy thông tin");
+      throw new Error(
+        error.response?.data?.error ||
+          error.message ||
+          "Không thể lấy thông tin"
+      );
     }
   }
 
@@ -242,12 +268,16 @@ class CustomerService {
       if (!this.isLoggedIn()) {
         throw new Error("Chưa đăng nhập");
       }
-      
+
       const response = await customerApi.put("/customer/me", updateData);
       return response.data;
     } catch (error) {
       console.error("Update me error:", error);
-      throw new Error(error.response?.data?.error || error.message || "Không thể cập nhật thông tin");
+      throw new Error(
+        error.response?.data?.error ||
+          error.message ||
+          "Không thể cập nhật thông tin"
+      );
     }
   }
 
@@ -257,15 +287,17 @@ class CustomerService {
       if (!this.isLoggedIn()) {
         throw new Error("Chưa đăng nhập");
       }
-      
+
       const response = await customerApi.put("/customer/change-password", {
         oldPassword,
-        newPassword
+        newPassword,
       });
       return response.data;
     } catch (error) {
       console.error("Change password error:", error);
-      throw new Error(error.response?.data?.error || error.message || "Không thể đổi mật khẩu");
+      throw new Error(
+        error.response?.data?.error || error.message || "Không thể đổi mật khẩu"
+      );
     }
   }
 
@@ -273,108 +305,132 @@ class CustomerService {
 
   // Tạo order
   async createOrder(tableId, totalAmount) {
-    try {
-      const numericTotal = Number(totalAmount);
-     
-      if (isNaN(numericTotal) || numericTotal <= 0) {
-        throw new Error("Tổng tiền không hợp lệ");
-      }
-
-      const orderData = {
-        table_id: tableId,
-        total_amount: numericTotal,
-      };
-
-      const token = this.getToken();
-      const apiExecutor = token ? customerApi : publicApi;
-      const response = await apiExecutor.post("/customer/orders", orderData);
-      
-      return response.data;
-    } catch (error) {
-      throw error;
+    const numericTotal = Number(totalAmount);
+    
+    if (isNaN(numericTotal) || numericTotal <= 0) {
+      throw new Error("Tổng tiền không hợp lệ");
     }
+
+    const orderData = {
+      table_id: tableId,
+      total_amount: numericTotal,
+    };
+
+    const token = this.getToken();
+    const apiExecutor = token ? customerApi : publicApi;
+    const response = await apiExecutor.post("/customer/orders", orderData);
+    
+    return response.data;
   }
 
   // Tạo order với items
-  async createOrderWithItems(tableId, cartItems) {
-    try {     
-      // Tính tổng tiền
-      let totalAmount = 0;
-      
-      cartItems.forEach((item) => {
-        const itemPrice = Number(item.price) || 0;
-        const itemQuantity = Number(item.quantity) || 1;
-        totalAmount += itemPrice * itemQuantity;
-      });
+  async createOrderWithItems(tableId, cartItems) {    
+    // Tính tổng tiền
+    let totalAmount = 0;
+    
+    cartItems.forEach((item) => {
+      const itemPrice = Number(item.price) || 0;
+      const itemQuantity = Number(item.quantity) || 1;
+      totalAmount += itemPrice * itemQuantity;
+    });
 
-      if (isNaN(totalAmount) || totalAmount <= 0) {
-        throw new Error("Tổng tiền không hợp lệ");
+    if (isNaN(totalAmount) || totalAmount <= 0) {
+      throw new Error("Tổng tiền không hợp lệ");
+    }
+
+    const orderRes = await this.createOrder(tableId, totalAmount);
+    const orderId = orderRes.data?.id;
+
+    if (!orderId) {
+      throw new Error("Không thể khởi tạo ID đơn hàng");
+    }
+
+    const token = this.getToken();
+    const apiExecutor = token ? customerApi : publicApi;
+
+    const itemPromises = cartItems.map(async (item) => {
+      const itemData = {
+        order_id: orderId,
+        menu_item_id: item.id,
+        quantity: Number(item.quantity) || 1,
+        price_at_order: Number(item.price) || 0,
+        notes: item.notes || "",
+      };
+      return await apiExecutor.post("/customer/order-items", itemData);
+    });
+
+    await Promise.all(itemPromises);
+
+    return {
+      success: true,
+      message: "Gửi món thành công", // Sửa message theo ý bạn
+      data: {
+          id: orderId,
+          status: 'pending',        // [QUAN TRỌNG] Phải có cái này để hiện thanh màu vàng
+          totalAmount: totalAmount,
+          table_id: tableId,
+          items: cartItems.map(item => ({ // Map lại items để hiển thị chi tiết
+              ...item,
+              menuItem: { name: item.name } // Format cho khớp hiển thị
+          }))
       }
+    };
+  }
 
-      const orderRes = await this.createOrder(tableId, totalAmount);
-      const orderId = orderRes.data?.id;
-
-      if (!orderId) {
-        throw new Error("Không thể khởi tạo ID đơn hàng");
-      }
-
+  async getOrdersByIds(orderIds) {
+    try {
       const token = this.getToken();
       const apiExecutor = token ? customerApi : publicApi;
 
-      const itemPromises = cartItems.map(async (item) => {
-        const itemData = {
-          order_id: orderId,
-          menu_item_id: item.id,
-          quantity: Number(item.quantity) || 1,
-          price_at_order: Number(item.price) || 0,
-          notes: item.notes || "",
-        };
-        return await apiExecutor.post("/customer/order-items", itemData);
+      const orderPromises = orderIds.map(async (orderId) => {
+        const response = await apiExecutor.get(`/customer/orders/${orderId}`);
+        return response.data;
       });
 
-      await Promise.all(itemPromises);
+      const results = await Promise.all(orderPromises);
 
       return {
         success: true,
-        orderId: orderId,
-        totalAmount: totalAmount,
-        message: "Đặt món thành công",
-        itemsCount: cartItems.length
+        data: results.map((r) => r.data || r).flat(),
       };
-      
     } catch (error) {
-      throw error;
+      return {
+        success: false,
+        message: error.message || "Unable to fetch order information",
+        data: [],
+      };
     }
   }
 
   // 12. Lấy order với items
   async getOrderWithItems(orderId) {
-    try {   
+    try {
       const token = this.getToken();
       const apiExecutor = token ? customerApi : publicApi;
 
-      const response = await apiExecutor.get(`/customer/order-items/order/${orderId}`);
-      
+      const response = await apiExecutor.get(
+        `/customer/order-items/order/${orderId}`
+      );
+
       const items = response.data.data || [];
 
       if (!response.data.success) {
-        throw new Error(response.data.message || 'Không thể lấy danh sách món');
+        throw new Error(response.data.message || "Không thể lấy danh sách món");
       }
       const orderInfo = items.length > 0 ? items[0].Order : { id: orderId };
 
       return {
         success: true,
-        order: orderInfo, 
-        items: items,  
-        message: 'Lấy dữ liệu thành công'
+        order: orderInfo,
+        items: items,
+        message: "Lấy dữ liệu thành công",
       };
-      
     } catch (error) {
       return {
         success: false,
         message: error.message,
         order: null,
-        items: []
+        items: [],
       };
     }
   }
@@ -393,6 +449,97 @@ class CustomerService {
     } catch (error) {
       console.error("Lỗi getOrders:", error);
       throw error;
+    }
+  }
+
+  // [MỚI] Hàm lấy chi tiết đơn hàng (Dùng cho OrderTracking)
+  async getOrderById(orderId) {
+    try {
+      // Tận dụng hàm getOrderWithItems bạn đã viết sẵn
+      const result = await this.getOrderWithItems(orderId);
+
+      if (result.success) {
+        // Format lại dữ liệu để khớp với mong đợi của OrderTracking component
+        // Gộp 'order' và 'items' thành 1 object data duy nhất
+        return {
+          success: true,
+          data: {
+            ...result.order,      // Spread thông tin order (table_id, total_amount...)
+            items: result.items   // Gắn thêm mảng items vào
+          }
+        };
+      }
+      
+      return { success: false, message: result.message || "Không tìm thấy đơn hàng" };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  // [MỚI] Hàm gọi thêm món vào đơn hàng đã có
+  async addItemsToOrder(orderId, cartItems) {
+    try {
+      const token = this.getToken();
+      const apiExecutor = token ? customerApi : publicApi;
+
+      // Duyệt qua từng món trong giỏ và gửi lên server
+      const itemPromises = cartItems.map(async (item) => {
+        const itemData = {
+          order_id: orderId,
+          menu_item_id: item.id,
+          quantity: Number(item.quantity) || 1,
+          price_at_order: Number(item.price) || 0,
+          notes: item.notes || "",
+        };
+        // Gọi API Backend: POST /customer/order-items
+        return await apiExecutor.post("/customer/order-items", itemData);
+      });
+
+      // Chờ tất cả các món được gửi xong
+      await Promise.all(itemPromises);
+
+      return {
+        success: true,
+        message: "Gọi thêm món thành công",
+        // Trả về data giả lập để MenuPage không bị lỗi undefined
+        // Dữ liệu thật sẽ được Socket cập nhật ngay lập tức sau đó
+        data: {
+            id: orderId,
+            status: 'pending' // Quan trọng: Giữ status để thanh Tracking không bị mất
+        }
+      };
+
+    } catch (error) {
+      console.error("Add items error:", error);
+      
+      // ✅ XỬ LÝ KHI ORDER KHÔNG TỒN TẠI
+      if (error.response?.data?.code === 'ORDER_NOT_FOUND' || 
+          error.response?.data?.code === 'ORDER_CLOSED') {
+        // Throw error với flag đặc biệt để MenuPage biết phải tạo đơn mới
+        const err = new Error(error.response.data.message || "Đơn hàng không hợp lệ");
+        err.shouldCreateNewOrder = true;
+        throw err;
+      }
+      
+      throw new Error(error.response?.data?.message || "Không thể gọi thêm món");
+    }
+  }
+
+  // [MỚI] Hàm yêu cầu thanh toán
+  async requestPayment(orderId) {
+    try {
+      const token = this.getToken();
+      const apiExecutor = token ? customerApi : publicApi;
+
+      // Gọi API Backend (Bạn cần đảm bảo Backend có route này)
+      const response = await apiExecutor.post(`/customer/orders/${orderId}/request-payment`);
+      return response.data;
+    } catch (error) {
+      console.error("Request payment error:", error);
+      return {
+        success: false,
+        message: error.response?.data?.error || error.message || "Không thể gửi yêu cầu thanh toán"
+      };
     }
   }
 
@@ -434,7 +581,10 @@ class CustomerService {
         return false;
       }
 
-      const response = await this.checkVerificationStatus(customer.uid, customer.email);
+      const response = await this.checkVerificationStatus(
+        customer.uid,
+        customer.email
+      );
       return response.success && response.data?.isVerified;
     } catch (error) {
       console.error("Check email verified error:", error);
@@ -451,7 +601,7 @@ class CustomerService {
       }
 
       const response = await publicApi.post("/customer/refresh-token", {
-        token
+        token,
       });
 
       if (response.data.success && response.data.data?.accessToken) {
@@ -462,6 +612,37 @@ class CustomerService {
     } catch (error) {
       console.error("Refresh token error:", error);
       return false;
+    }
+  }
+
+  // ========== PAYMENT METHODS ==========
+  
+  // Yêu cầu thanh toán
+  async requestPayment(orderId, paymentMethod = 'cash') {
+    try {
+      const response = await publicApi.post(`/customer/orders/${orderId}/request-payment`, {
+        payment_method: paymentMethod
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error || error.message || "Yêu cầu thanh toán thất bại"
+      );
+    }
+  }
+
+  // Hoàn tất thanh toán (Gọi sau khi payment gateway callback)
+  async completePayment(orderId, transactionId, paymentMethod) {
+    try {
+      const response = await publicApi.post(`/customer/orders/${orderId}/complete-payment`, {
+        transaction_id: transactionId,
+        payment_method: paymentMethod
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error || error.message || "Hoàn tất thanh toán thất bại"
+      );
     }
   }
 }
