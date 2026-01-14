@@ -38,6 +38,12 @@ export const createOrderItem = async (req, res) => {
         // Service này sẽ INSERT vào DB với status mặc định là 'pending'
         await OrderItemService.createOrderItem(req.body);
 
+        if (['ready', 'served'].includes(existingOrder.status)) {
+            console.log(`🔔 Đánh thức đơn hàng ${order_id}: ${existingOrder.status} -> pending`);
+            existingOrder.status = 'pending';
+            await existingOrder.save(); // Lưu status mới xuống DB
+        }
+
         // 3. [QUAN TRỌNG] Lấy lại toàn bộ thông tin đơn hàng để bắn Socket
         // Query này y hệt bên Kitchen Controller để đảm bảo dữ liệu đồng nhất
         const fullOrder = await Order.findByPk(order_id, {
@@ -75,7 +81,9 @@ export const createOrderItem = async (req, res) => {
             if (req.io) {
                 // ✅ Event rõ ràng: Đơn mới từ khách (chưa duyệt)
                 req.io.emit('new_order_created', fullOrder);
-                
+                // Bắn thêm event này để chắc chắn UI Waiter cập nhật status mới
+                req.io.emit('order_status_updated', fullOrder);
+
                 // Bắn riêng cho bàn đó (để khách thấy món mình vừa đặt hiện lên ngay)
                 if (fullOrder.table) {
                     req.io.emit(`order_update_table_${fullOrder.table.id}`, fullOrder);

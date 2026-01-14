@@ -111,7 +111,7 @@ const Kitchen = () => {
             if(o.id === orderId) {
                 // Chuyển status order và các món pending -> preparing
                 const newItems = o.items.map(i => 
-                    ['pending', 'confirmed'].includes(i.status) ? {...i, status: 'preparing'} : i
+                    i.status === 'confirmed' ? {...i, status: 'preparing'} : i
                 );
                 return { ...o, status: 'preparing', items: newItems };
             }

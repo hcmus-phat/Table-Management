@@ -29,6 +29,12 @@ export const getKitchenOrders = async (req, res) => {
         {
           model: OrderItem,
           as: "items",
+          where: {
+              status: {
+                  [Op.ne]: 'cancelled' // Lấy tất cả TRỪ món đã hủy
+              }
+          },
+          required: true,
           include: [
             {
               model: MenuItem,
@@ -66,143 +72,6 @@ export const getKitchenOrders = async (req, res) => {
   }
 };
 
-// 2. Cập nhật status của order (QUAN TRỌNG NHẤT)
-export const updateOrderStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    // Validate status
-    const validStatuses = [
-      "pending", "confirmed", "preparing", "ready", 
-      "served", "payment", "completed", "cancelled"
-    ];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        error: "Trạng thái không hợp lệ",
-      });
-    }
-
-    const order = await Order.findByPk(id);
-
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        error: "Không tìm thấy đơn hàng",
-      });
-    }
-
-    // --- BƯỚC 1: CẬP NHẬT ORDER (VỎ NGOÀI) ---
-    order.status = status;
-    // ✅ FIX: Chỉ set completed_at khi THỰC SỰ hoàn tất (payment/completed)
-    if (status === 'completed' || status === 'payment') {
-      order.completed_at = new Date();
-    }
-    await order.save();
-
-    // --- BƯỚC 2: CẬP NHẬT ITEM BÊN TRONG ---
-    // Logic: Order thay đổi -> Items bên trong phải thay đổi theo
-    
-    if (status === 'preparing') {
-        // Bếp ấn Nấu: Chuyển tất cả món "chờ" hoặc "đã xác nhận" sang "đang nấu"
-        await OrderItem.update(
-            { status: 'preparing' },
-            { 
-                where: { 
-                    order_id: id,
-                    status: { [Op.in]: ['pending', 'confirmed'] } 
-                } 
-            }
-        );
-    } 
-    else if (status === 'ready') {
-        // Bếp ấn Xong: Chuyển món "đang nấu" sang "sẵn sàng"
-        await OrderItem.update(
-            { status: 'ready' },
-            { 
-                where: { 
-                    order_id: id,
-                    status: 'preparing'
-                } 
-            }
-        );
-    }
-    else if (status === 'served') {
-        // Waiter đã mang món lên bàn: Items chuyển sang served
-        await OrderItem.update(
-            { status: 'served' },
-            { 
-                where: { 
-                    order_id: id,
-                    status: { [Op.in]: ['ready', 'preparing'] } // Các món chưa serve
-                } 
-            }
-        );
-    }
-    else if (status === 'cancelled') {
-        // Hủy đơn: Tất cả items cancelled
-        await OrderItem.update(
-            { status: 'cancelled' },
-            { where: { order_id: id } }
-        );
-    }
-    // ❌ KHÔNG update items khi Order = 'payment' hoặc 'completed'
-    // Vì OrderItem ENUM không có 2 status này
-
-    // --- BƯỚC 3: LẤY LẠI DỮ LIỆU MỚI NHẤT ---
-    const updatedOrder = await Order.findByPk(id, {
-      include: [
-        {
-          model: Table,
-          as: "table",
-          attributes: ["id", "table_number", "location"],
-        },
-        {
-          model: OrderItem,
-          as: "items",
-          include: [
-            {
-              model: MenuItem,
-              as: "menu_item",
-              attributes: ["id", "name", "prep_time_minutes"],
-            },
-            {
-              model: OrderItemModifier,
-              as: "modifiers",
-              include: [{ model: ModifierOption, as: "modifier_option" }],
-            },
-          ],
-        },
-      ],
-    });
-
-    // --- BƯỚC 4: BẮN SOCKET (REAL-TIME) ---
-    // Nếu không có đoạn này, Waiter sẽ không thấy gì thay đổi trừ khi F5
-    if (req.io) {
-        req.io.emit('order_status_updated', updatedOrder);
-        
-        // Bắn riêng cho bàn (nếu khách dùng app)
-        if (updatedOrder.table) {
-             req.io.emit(`order_update_table_${updatedOrder.table.id}`, updatedOrder);
-        }
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: `Đã cập nhật trạng thái đơn hàng thành "${status}"`,
-      data: updatedOrder,
-    });
-
-  } catch (error) {
-    console.error("[Kitchen Controller] updateOrderStatus Error:", error);
-    return res.status(500).json({
-      success: false,
-      error: "Lỗi khi cập nhật trạng thái đơn hàng",
-      message: error.message,
-    });
-  }
-};
 
 // 3. Lấy thống kê cho Kitchen Display
 export const getKitchenStats = async (req, res) => {
@@ -248,10 +117,27 @@ export const updateOrderItemStatus = async (req, res) => {
         const { itemId } = req.params;
         const { status } = req.body; // 'ready'
 
+        const validStatuses = ['pending', 'preparing', 'ready', 'served', 'cancelled'];
+        if (!validStatuses.includes(status)) {
+             return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ' });
+        }
+
+        
+
         // 1. Update món ăn
         const item = await OrderItem.findByPk(itemId);
         if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
 
+        // 🛡️ 3. [BỔ SUNG QUAN TRỌNG] Chặn sửa nếu đơn đã Đóng/Hủy
+        // Tránh việc Bếp bấm nghịch vào đơn đã thanh toán xong
+        const parentOrder = await Order.findByPk(item.order_id);
+        if (['completed', 'cancelled'].includes(parentOrder.status)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Đơn hàng đã đóng hoặc bị hủy. Không thể cập nhật món.' 
+            });
+        }
+        
         item.status = status;
         await item.save();
 
@@ -261,22 +147,28 @@ export const updateOrderItemStatus = async (req, res) => {
         });
 
         if (order) {
-            // Kiểm tra xem TẤT CẢ món (trừ món hủy) đã xong chưa?
-            // Các trạng thái được coi là "Xong": ready, served
-            const allItemsDone = order.items
-                .filter(i => i.status !== 'cancelled')
-                .every(i => ['ready', 'served'].includes(i.status));
+            const validItems = order.items.filter(i => i.status !== 'cancelled');
 
-            // Nếu tất cả đã xong -> Update Order thành 'ready'
-            if (allItemsDone && order.status !== 'ready' && order.status !== 'completed') {
+            const allItemsDone = validItems.every(i => ['ready', 'served'].includes(i.status));
+            // Nếu có ít nhất 1 món đang 'preparing' hoặc 'ready' -> Order phải là 'preparing'
+            const hasPreparingItem = validItems.some(i => i.status === 'preparing');
+
+            // CASE A: Tất cả đã xong -> Lên đời 'ready'
+            // (Chỉ lên khi Order chưa đóng và chưa ready)
+            if (allItemsDone && !['ready', 'served', 'completed'].includes(order.status)) {
+                console.log(`✅ Order ${order.id} tự động chuyển sang READY`);
                 order.status = 'ready';
                 await order.save();
-            } 
-            // Nếu có ít nhất 1 món đang 'preparing' hoặc 'ready' -> Order phải là 'preparing'
-            // (Trường hợp Waiter lỡ tay bấm 'ready' order rồi lại thêm món mới)
-            else if (!allItemsDone && order.status === 'ready') {
-                order.status = 'preparing';
-                await order.save();
+            }
+            // CASE B: Nếu chưa xong hết
+            else if (!allItemsDone) {
+                // Tình huống 1: Đang 'ready' mà bị lùi lại (do bấm nhầm/thêm món)
+                // Tình huống 2: Đang 'confirmed'/'pending' mà Bếp bắt đầu nấu món đầu tiên (QUAN TRỌNG)
+                if (order.status === 'ready' || (hasPreparingItem && ['pending', 'confirmed'].includes(order.status))) {
+                     console.log(`👨‍🍳 Order ${order.id} cập nhật trạng thái PREPARING`);
+                     order.status = 'preparing';
+                     await order.save();
+                }
             }
         }
 

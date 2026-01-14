@@ -2,10 +2,13 @@
 import express from "express";
 import {
   getKitchenOrders,
-  updateOrderStatus,
   getKitchenStats,
   updateOrderItemStatus,
 } from "../../controllers/restaurant/kitchen.controller.js";
+
+import {
+  updateOrderStatus,
+} from "../../controllers/restaurant/order.controller.js";
 
 const router = express.Router();
 
@@ -16,7 +19,7 @@ router.get("/orders", getKitchenOrders);
 router.get("/stats", getKitchenStats);
 
 // PATCH /api/admin/kitchen/orders/:id/status - Cập nhật trạng thái đơn hàng
-router.patch("/orders/:id/status", updateOrderStatus);
+router.patch("/orders/:orderId/status", updateOrderStatus);
 
 router.put('/items/:itemId/status', updateOrderItemStatus)
 

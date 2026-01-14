@@ -17,10 +17,12 @@ const kitchenService = {
   // Cập nhật status của order
   updateOrderStatus: async (orderId, status) => {
     try {
+    
       const response = await adminApi.patch(
         `/kitchen/orders/${orderId}/status`,
         { status }
       );
+      
       return response.data;
     } catch (error) {
       console.error("Error updating order status:", error);
