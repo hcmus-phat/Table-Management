@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import VerifiedEmail from "./verifiedEmail.js"; 
 class Customer extends Model {
   async comparePassword(candidatePassword) {
-      // Nếu là Google user (không có password), luôn trả về false
+      // Nếu là Google user (không có password)
       if (this.auth_method === 'google') {
         console.log("[MODEL] Google user - không kiểm tra password");
         return false; 
@@ -18,7 +18,6 @@ class Customer extends Model {
         return false;
       }
   
-      // So sánh password bình thường
       return bcrypt.compare(candidatePassword, this.password);
     }
 }
