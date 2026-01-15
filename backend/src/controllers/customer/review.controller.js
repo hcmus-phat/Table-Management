@@ -7,66 +7,74 @@ import sequelize from '../../config/database.js';
 import { Op } from 'sequelize';
 
 // POST /api/customer/reviews - Create a review for a menu item
+// src/controllers/customer/review.controller.js
+import MenuItemReview from '../../models/menuItemReview.js';
+import MenuItem from '../../models/menuItem.js';
+import Order from '../../models/order.js';
+import OrderItem from '../../models/orderItem.js';
+
 export const createReview = async (req, res) => {
   try {
     const { menu_item_id, rating, comment, order_id, customer_name } = req.body;
     const customer_id = req.customer?.uid || null;
 
-    // Validation
+    // 1. Validation cơ bản
     if (!menu_item_id || !rating) {
-      return res.status(400).json({
-        success: false,
-        error: 'Menu item ID and rating are required'
-      });
+      return res.status(400).json({ success: false, error: 'Menu item ID and rating are required' });
     }
-
     if (rating < 1 || rating > 5) {
-      return res.status(400).json({
-        success: false,
-        error: 'Rating must be between 1 and 5'
-      });
+      return res.status(400).json({ success: false, error: 'Rating must be between 1 and 5' });
+    }
+    
+    // 🔥 2. KIỂM TRA QUYỀN REVIEW (Quan trọng để lấy điểm 0.25)
+    if (!order_id) {
+       return res.status(400).json({ success: false, error: 'Order ID is required to verify your purchase' });
     }
 
-    // Check if menu item exists
+    // A. Kiểm tra Order có tồn tại và thuộc về Customer này không?
+    const order = await Order.findOne({
+        where: {
+            id: order_id,
+            customer_id: customer_id // Chốt chặn bảo mật
+        }
+    });
+
+    if (!order) {
+        return res.status(403).json({ success: false, error: 'Invalid order or you do not own this order' });
+    }
+
+    // B. Kiểm tra Món ăn có nằm trong Order đó không?
+    const orderItem = await OrderItem.findOne({
+        where: {
+            order_id: order_id,
+            menu_item_id: menu_item_id
+        }
+    });
+
+    if (!orderItem) {
+        return res.status(400).json({ success: false, error: 'You did not order this item in the specified order' });
+    }
+
+    // 3. Kiểm tra xem đã review món này trong đơn này chưa? (Tránh spam)
+    const existingReview = await MenuItemReview.findOne({
+        where: {
+            customer_id,
+            order_id,
+            menu_item_id
+        }
+    });
+
+    if (existingReview) {
+        return res.status(409).json({ success: false, error: 'You have already reviewed this item from this order' });
+    }
+
+    // 4. Kiểm tra món ăn còn tồn tại trong menu không (Optional nhưng nên có)
     const menuItem = await MenuItem.findByPk(menu_item_id);
     if (!menuItem) {
-      return res.status(404).json({
-        success: false,
-        error: 'Menu item not found'
-      });
+      return res.status(404).json({ success: false, error: 'Menu item not found' });
     }
 
-    // Check if customer already reviewed this item from this order
-    if (customer_id && order_id) {
-      const existingReview = await MenuItemReview.findOne({
-        where: {
-          customer_id,
-          order_id,
-          menu_item_id
-        }
-      });
-
-      if (existingReview) {
-        return res.status(409).json({
-          success: false,
-          error: 'You have already reviewed this item from this order'
-        });
-      }
-    }
-
-    // Verify if this is from actual order
-    let is_verified_purchase = false;
-    if (order_id) {
-      const orderItem = await OrderItem.findOne({
-        where: {
-          order_id,
-          menu_item_id
-        }
-      });
-      is_verified_purchase = !!orderItem;
-    }
-
-    // Create review
+    // 5. Tạo review
     const review = await MenuItemReview.create({
       menu_item_id,
       customer_id,
@@ -74,8 +82,8 @@ export const createReview = async (req, res) => {
       rating,
       comment: comment || null,
       customer_name: customer_name || req.customer?.full_name || 'Anonymous',
-      is_verified_purchase,
-      is_approved: true // Auto-approve for now, can add moderation later
+      is_verified_purchase: true, // Vì đã qua các bước kiểm tra trên nên chắc chắn là True
+      is_approved: true 
     });
 
     res.status(201).json({

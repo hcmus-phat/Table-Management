@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import CustomerService from '../services/customerService';
-import { ArrowLeft, MapPin, Clock, Receipt } from 'lucide-react'; // Thêm icon
+import { ArrowLeft, MapPin, Clock, Receipt, Star } from 'lucide-react';
+import ReviewModal from '../components/review/ReviewModal';
 
 const OrderDetailPage = () => {
   const { orderId } = useParams();
@@ -9,6 +10,11 @@ const OrderDetailPage = () => {
   const [items, setItems] = useState([]);
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // Review Modal State
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedMenuItem, setSelectedMenuItem] = useState(null);
+  const [reviewedItems, setReviewedItems] = useState(new Set()); // Track món đã review
 
   // --- 1. HELPER: BADGE TRẠNG THÁI (UI Đẹp) ---
   const getStatusBadge = (status) => {
@@ -49,6 +55,28 @@ const OrderDetailPage = () => {
         
         setOrder(actualOrder);
         setItems(actualOrder.items || []);
+
+        // Fetch danh sách món đã review (nếu order đã completed)
+        if (actualOrder.status === 'completed') {
+          try {
+            const reviewableData = await CustomerService.getReviewableItems(orderId);
+            if (reviewableData.success) {
+              // Backend trả về reviewable_items (món CHƯA review)
+              // Tính ngược lại: tất cả món - món chưa review = món đã review
+              const allItemIds = (actualOrder.items || []).map(i => i.menu_item_id || i.menu_item?.id);
+              const reviewableIds = new Set(
+                reviewableData.data.reviewable_items?.map(r => r.menu_item_id) || []
+              );
+              // Món đã review = món không có trong reviewable_items
+              const reviewedIds = new Set(
+                allItemIds.filter(id => !reviewableIds.has(id))
+              );
+              setReviewedItems(reviewedIds);
+            }
+          } catch (reviewError) {
+            console.error('Lỗi khi lấy thông tin review:', reviewError);
+          }
+        }
       } catch (error) {
         console.error('Lỗi khi lấy chi tiết đơn hàng:', error);
       } finally {
@@ -68,6 +96,24 @@ const OrderDetailPage = () => {
     return new Date(dateString).toLocaleString('vi-VN', {
       hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric'
     });
+  };
+
+  // Handler mở review modal
+  const handleOpenReview = (item) => {
+    setSelectedMenuItem({
+      id: item.menu_item_id || item.menu_item?.id,
+      name: item.menu_item?.name || item.name,
+      price: item.price_at_order
+    });
+    setReviewModalOpen(true);
+  };
+
+  const handleReviewSuccess = () => {
+    // Thêm món vào danh sách đã review
+    if (selectedMenuItem?.id) {
+      setReviewedItems(prev => new Set([...prev, selectedMenuItem.id]));
+    }
+    setReviewModalOpen(false);
   };
 
   if (loading) {
@@ -197,6 +243,24 @@ const OrderDetailPage = () => {
                         <p className="font-bold text-gray-900 text-lg md:text-base">
                           {formatCurrency(itemTotal)}
                         </p>
+                        
+                        {/* Nút Review - chỉ hiện khi order đã completed */}
+                        {order?.status === 'completed' && (
+                          reviewedItems.has(item.menu_item_id || item.menu_item?.id) ? (
+                            <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 text-xs font-bold rounded-lg border border-green-200">
+                              <Star size={14} className="fill-green-600" />
+                              Đã đánh giá
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleOpenReview(item)}
+                              className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg transition-colors shadow-sm"
+                            >
+                              <Star size={14} />
+                              Đánh giá
+                            </button>
+                          )
+                        )}
                       </div>
                     </div>
                  );
@@ -226,6 +290,15 @@ const OrderDetailPage = () => {
             </div>
           </div>
           
+
+      {/* Review Modal */}
+      <ReviewModal
+        isOpen={reviewModalOpen}
+        onClose={() => setReviewModalOpen(false)}
+        menuItem={selectedMenuItem}
+        orderId={orderId}
+        onSuccess={handleReviewSuccess}
+      />
           {/* --- 3. GHI CHÚ TỔNG --- */}
           {order?.notes && (
             <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5">

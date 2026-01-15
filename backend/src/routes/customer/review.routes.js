@@ -7,14 +7,17 @@ import {
   updateReview,
   deleteReview
 } from '../../controllers/customer/review.controller.js';
+import authCustomer from '../../middlewares/authCustomer.middleware.js';
 
 const router = express.Router();
 
-// POST /api/customer/reviews - Create a new review
-router.post('/', createReview);
-
 // GET /api/customer/reviews/menu-item/:menuItemId - Get reviews for a menu item
 router.get('/menu-item/:menuItemId', getMenuItemReviews);
+
+router.use(authCustomer);
+
+// POST /api/customer/reviews - Create a new review
+router.post('/', createReview);
 
 // GET /api/customer/reviews/order/:orderId/can-review - Check reviewable items
 router.get('/order/:orderId/can-review', getReviewableItems);
