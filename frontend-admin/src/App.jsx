@@ -15,7 +15,7 @@ import UserManagement from "./pages/admin/UserManagement";
 // ĐÃ XÓA IMPORT SuperAdminRoute
 import HomeRedirect from "./components/common/HomeRedirect";
 import EmployeeManagement from "./pages/admin/EmployeeManagement";
-import Kitchen from "./pages/Kitchen";
+import KitchenPage from "./pages/kitchen/KitchenPage";
 import WaiterPage from "./pages/waiter/WaiterPage";
 
 import {
@@ -31,12 +31,18 @@ const getUserRole = () => {
   const token = localStorage.getItem("token");
   if (!token) return null;
   try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
-    return JSON.parse(jsonPayload).role; 
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      window
+        .atob(base64)
+        .split("")
+        .map(function (c) {
+          return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+        })
+        .join("")
+    );
+    return JSON.parse(jsonPayload).role;
   } catch (e) {
     return null;
   }
@@ -55,9 +61,9 @@ const RoleRoute = ({ allowedRoles }) => {
   }
 
   // Nếu sai quyền -> Đá về chuồng
-  if (role === 'kitchen') return <Navigate to="/kitchen" replace />;
-  if (role === 'waiter') return <Navigate to="/waiter" replace />;
-  
+  if (role === "kitchen") return <Navigate to="/kitchen" replace />;
+  if (role === "waiter") return <Navigate to="/waiter" replace />;
+
   return <Navigate to="/" replace />;
 };
 
@@ -68,17 +74,17 @@ function App() {
         <Route path="/login" element={<Login />} />
 
         {/* 1. KHU VỰC BẾP */}
-        <Route element={<RoleRoute allowedRoles={['kitchen']} />}>
-           <Route path="/kitchen" element={<Kitchen />} />
+        <Route element={<RoleRoute allowedRoles={["kitchen"]} />}>
+          <Route path="/kitchen" element={<KitchenPage />} />
         </Route>
 
         {/* 2. KHU VỰC WAITER */}
-        <Route element={<RoleRoute allowedRoles={['waiter']} />}>
-           <Route path="/waiter" element={<WaiterPage />} />
+        <Route element={<RoleRoute allowedRoles={["waiter"]} />}>
+          <Route path="/waiter" element={<WaiterPage />} />
         </Route>
 
         {/* 3. KHU VỰC QUẢN LÝ (ADMIN) */}
-        <Route element={<RoleRoute allowedRoles={['admin', 'super_admin']} />}>
+        <Route element={<RoleRoute allowedRoles={["admin", "super_admin"]} />}>
           <Route element={<Layout />}>
             <Route path="/" element={<HomeRedirect />} />
 
@@ -92,20 +98,22 @@ function App() {
             <Route path="/admin/menu/items" element={<MenuItemList />} />
             <Route path="/admin/menu/items/new" element={<MenuItemForm />} />
             <Route path="/admin/menu/items/:id" element={<MenuItemForm />} />
-            <Route path="/admin/menu/modifiers" element={<ModifierGroupList />} />
-            
+            <Route
+              path="/admin/menu/modifiers"
+              element={<ModifierGroupList />}
+            />
+
             <Route path="/admin/employees" element={<EmployeeManagement />} />
 
             {/* --- 4. KHU VỰC SUPER ADMIN (Dùng RoleRoute luôn) --- */}
             {/* Chỉ user có role 'super_admin' mới vào được đây */}
-            <Route element={<RoleRoute allowedRoles={['super_admin']} />}>
+            <Route element={<RoleRoute allowedRoles={["super_admin"]} />}>
               <Route path="/admin/users" element={<UserManagement />} />
             </Route>
 
             <Route path="*" element={<div>404 Not Found</div>} />
           </Route>
         </Route>
-
       </Routes>
     </Router>
   );
