@@ -6,11 +6,10 @@ class CustomerService {
   // Đăng ký
   async register(username, email, password) {
     try {
-
       const response = await publicApi.post("/customer/register", {
         username,
         email,
-        password,   
+        password,
       });
       return response.data;
     } catch (error) {
@@ -22,42 +21,41 @@ class CustomerService {
 
   async syncGoogleUser(userData) {
     try {
-      
       // Gọi API backend
       const response = await publicApi.post("/customer/sync-google", userData);
 
       // Nếu API trả về success
       if (response.data.success && response.data.data) {
         const { customer, accessToken } = response.data.data;
-        
+
         // Lưu vào localStorage GIỐNG NHƯ LOGIN
         localStorage.setItem("customer_token", accessToken);
         localStorage.setItem("customer_info", JSON.stringify(customer));
-        localStorage.setItem("auth_method", "google"); 
+        localStorage.setItem("auth_method", "google");
 
-        console.log("[CUSTOMER SERVICE] Đồng bộ thành công, đã lưu vào localStorage");
-        
+        console.log(
+          "[CUSTOMER SERVICE] Đồng bộ thành công, đã lưu vào localStorage"
+        );
+
         return {
           success: true,
           customer,
           accessToken,
-          message: response.data.message || "Đăng nhập Google thành công"
+          message: response.data.message || "Đăng nhập Google thành công",
         };
       }
 
       // Nếu API trả về lỗi
       throw new Error(response.data.error || "Đồng bộ Google thất bại");
-
     } catch (error) {
-      console.error('[CUSTOMER SERVICE] Sync Google error:', error);
+      console.error("[CUSTOMER SERVICE] Sync Google error:", error);
       throw new Error(
-        error.response?.data?.error || 
-        error.message || 
-        "Đồng bộ Google thất bại"
+        error.response?.data?.error ||
+          error.message ||
+          "Đồng bộ Google thất bại"
       );
     }
   }
-
 
   // Đăng nhập
   async login(email, password) {
@@ -306,7 +304,7 @@ class CustomerService {
   // Tạo order
   async createOrder(tableId, totalAmount) {
     const numericTotal = Number(totalAmount);
-    
+
     if (isNaN(numericTotal) || numericTotal <= 0) {
       throw new Error("Tổng tiền không hợp lệ");
     }
@@ -319,15 +317,15 @@ class CustomerService {
     const token = this.getToken();
     const apiExecutor = token ? customerApi : publicApi;
     const response = await apiExecutor.post("/customer/orders", orderData);
-    
+
     return response.data;
   }
 
   // Tạo order với items
-  async createOrderWithItems(tableId, cartItems) {    
+  async createOrderWithItems(tableId, cartItems) {
     // Tính tổng tiền
     let totalAmount = 0;
-    
+
     cartItems.forEach((item) => {
       const itemPrice = Number(item.price) || 0;
       const itemQuantity = Number(item.quantity) || 1;
@@ -348,7 +346,7 @@ class CustomerService {
     const token = this.getToken();
     const apiExecutor = token ? customerApi : publicApi;
 
-    console.log('📦 createOrderWithItems - cartItems:', cartItems);
+    console.log("📦 createOrderWithItems - cartItems:", cartItems);
 
     const itemPromises = cartItems.map(async (item) => {
       const itemData = {
@@ -356,10 +354,10 @@ class CustomerService {
         menu_item_id: item.id,
         quantity: Number(item.quantity) || 1,
         price_at_order: Number(item.price) || 0,
-        notes: item.notes || item.note || "",  // Support both notes and note
-        modifiers: item.modifiers
+        notes: item.notes || item.note || "", // Support both notes and note
+        modifiers: item.modifiers,
       };
-      console.log('📤 Sending item:', itemData);
+      console.log("📤 Sending item:", itemData);
       return await apiExecutor.post("/customer/order-items", itemData);
     });
 
@@ -369,15 +367,16 @@ class CustomerService {
       success: true,
       message: "Gửi món thành công", // Sửa message theo ý bạn
       data: {
-          id: orderId,
-          status: 'pending',        // [QUAN TRỌNG] Phải có cái này để hiện thanh màu vàng
-          totalAmount: totalAmount,
-          table_id: tableId,
-          items: cartItems.map(item => ({ // Map lại items để hiển thị chi tiết
-              ...item,
-              menuItem: { name: item.name } // Format cho khớp hiển thị
-          }))
-      }
+        id: orderId,
+        status: "pending", // [QUAN TRỌNG] Phải có cái này để hiện thanh màu vàng
+        totalAmount: totalAmount,
+        table_id: tableId,
+        items: cartItems.map((item) => ({
+          // Map lại items để hiển thị chi tiết
+          ...item,
+          menuItem: { name: item.name }, // Format cho khớp hiển thị
+        })),
+      },
     };
   }
 
@@ -468,13 +467,16 @@ class CustomerService {
         return {
           success: true,
           data: {
-            ...result.order,      // Spread thông tin order (table_id, total_amount...)
-            items: result.items   // Gắn thêm mảng items vào
-          }
+            ...result.order, // Spread thông tin order (table_id, total_amount...)
+            items: result.items, // Gắn thêm mảng items vào
+          },
         };
       }
-      
-      return { success: false, message: result.message || "Không tìm thấy đơn hàng" };
+
+      return {
+        success: false,
+        message: result.message || "Không tìm thấy đơn hàng",
+      };
     } catch (error) {
       return { success: false, message: error.message };
     }
@@ -486,7 +488,7 @@ class CustomerService {
       const token = this.getToken();
       const apiExecutor = token ? customerApi : publicApi;
 
-      console.log('📦 addItemsToOrder - cartItems:', cartItems);
+      console.log("📦 addItemsToOrder - cartItems:", cartItems);
 
       // Duyệt qua từng món trong giỏ và gửi lên server
       const itemPromises = cartItems.map(async (item) => {
@@ -495,10 +497,10 @@ class CustomerService {
           menu_item_id: item.id,
           quantity: Number(item.quantity) || 1,
           price_at_order: Number(item.price) || 0,
-          notes: item.notes || item.note || "",  // Support both notes and note
+          notes: item.notes || item.note || "", // Support both notes and note
           modifiers: item.modifiers,
         };
-        console.log('📤 Sending item:', itemData);
+        console.log("📤 Sending item:", itemData);
         // Gọi API Backend: POST /customer/order-items
         return await apiExecutor.post("/customer/order-items", itemData);
       });
@@ -512,24 +514,29 @@ class CustomerService {
         // Trả về data giả lập để MenuPage không bị lỗi undefined
         // Dữ liệu thật sẽ được Socket cập nhật ngay lập tức sau đó
         data: {
-            id: orderId,
-            status: 'pending' // Quan trọng: Giữ status để thanh Tracking không bị mất
-        }
+          id: orderId,
+          status: "pending", // Quan trọng: Giữ status để thanh Tracking không bị mất
+        },
       };
-
     } catch (error) {
       console.error("Add items error:", error);
-      
+
       // ✅ XỬ LÝ KHI ORDER KHÔNG TỒN TẠI
-      if (error.response?.data?.code === 'ORDER_NOT_FOUND' || 
-          error.response?.data?.code === 'ORDER_CLOSED') {
+      if (
+        error.response?.data?.code === "ORDER_NOT_FOUND" ||
+        error.response?.data?.code === "ORDER_CLOSED"
+      ) {
         // Throw error với flag đặc biệt để MenuPage biết phải tạo đơn mới
-        const err = new Error(error.response.data.message || "Đơn hàng không hợp lệ");
+        const err = new Error(
+          error.response.data.message || "Đơn hàng không hợp lệ"
+        );
         err.shouldCreateNewOrder = true;
         throw err;
       }
-      
-      throw new Error(error.response?.data?.message || "Không thể gọi thêm món");
+
+      throw new Error(
+        error.response?.data?.message || "Không thể gọi thêm món"
+      );
     }
   }
 
@@ -540,13 +547,18 @@ class CustomerService {
       const apiExecutor = token ? customerApi : publicApi;
 
       // Gọi API Backend (Bạn cần đảm bảo Backend có route này)
-      const response = await apiExecutor.post(`/customer/orders/${orderId}/request-payment`);
+      const response = await apiExecutor.post(
+        `/customer/orders/${orderId}/request-payment`
+      );
       return response.data;
     } catch (error) {
       console.error("Request payment error:", error);
       return {
         success: false,
-        message: error.response?.data?.error || error.message || "Không thể gửi yêu cầu thanh toán"
+        message:
+          error.response?.data?.error ||
+          error.message ||
+          "Không thể gửi yêu cầu thanh toán",
       };
     }
   }
@@ -624,29 +636,38 @@ class CustomerService {
   }
 
   // ========== PAYMENT METHODS ==========
-  
+
   // Lấy active order của bàn (dùng khi reload page)
   async getActiveOrder(tableId) {
     try {
-      const response = await publicApi.get(`/customer/tables/${tableId}/active-order`);
+      const response = await publicApi.get(
+        `/customer/tables/${tableId}/active-order`
+      );
       return response.data;
     } catch (error) {
       throw new Error(
-        error.response?.data?.error || error.message || "Không thể lấy thông tin đơn hàng"
+        error.response?.data?.error ||
+          error.message ||
+          "Không thể lấy thông tin đơn hàng"
       );
     }
   }
 
   // Yêu cầu thanh toán
-  async requestPayment(orderId, paymentMethod = 'cash') {
+  async requestPayment(orderId, paymentMethod = "cash") {
     try {
-      const response = await publicApi.post(`/customer/orders/${orderId}/request-payment`, {
-        payment_method: paymentMethod
-      });
+      const response = await publicApi.post(
+        `/customer/orders/${orderId}/request-payment`,
+        {
+          payment_method: paymentMethod,
+        }
+      );
       return response.data;
     } catch (error) {
       throw new Error(
-        error.response?.data?.error || error.message || "Yêu cầu thanh toán thất bại"
+        error.response?.data?.error ||
+          error.message ||
+          "Yêu cầu thanh toán thất bại"
       );
     }
   }
@@ -654,24 +675,62 @@ class CustomerService {
   // Hoàn tất thanh toán (Gọi sau khi payment gateway callback)
   async completePayment(orderId, transactionId, paymentMethod) {
     try {
-      const response = await publicApi.post(`/customer/orders/${orderId}/complete-payment`, {
-        transaction_id: transactionId,
-        payment_method: paymentMethod
+      const response = await publicApi.post(
+        `/customer/orders/${orderId}/complete-payment`,
+        {
+          transaction_id: transactionId,
+          payment_method: paymentMethod,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error ||
+          error.message ||
+          "Hoàn tất thanh toán thất bại"
+      );
+    }
+  }
+
+  // Tạo thanh toán MoMo - Gọi API để lấy payUrl
+  async createMomoPayment(orderId, amount) {
+    try {
+      const response = await publicApi.post("/customer/payment/momo-callback", {
+        orderId,
+        amount: amount.toString(),
       });
       return response.data;
     } catch (error) {
       throw new Error(
-        error.response?.data?.error || error.message || "Hoàn tất thanh toán thất bại"
+        error.response?.data?.error ||
+          error.message ||
+          "Không thể tạo thanh toán MoMo"
+      );
+    }
+  }
+
+  // Kiểm tra trạng thái thanh toán MoMo
+  async checkMomoPaymentStatus(orderId) {
+    try {
+      const response = await publicApi.post("/customer/payment/check-status", {
+        orderId,
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.error ||
+          error.message ||
+          "Không thể kiểm tra trạng thái thanh toán"
       );
     }
   }
 
   // ========== REVIEW METHODS ==========
-  
+
   // Tạo review cho món ăn
   async createReview(reviewData) {
     try {
-      const response = await publicApi.post('/customer/reviews', reviewData);
+      const response = await publicApi.post("/customer/reviews", reviewData);
       return response.data;
     } catch (error) {
       throw new Error(
@@ -704,7 +763,9 @@ class CustomerService {
       return response.data;
     } catch (error) {
       throw new Error(
-        error.response?.data?.error || error.message || "Không thể kiểm tra đánh giá"
+        error.response?.data?.error ||
+          error.message ||
+          "Không thể kiểm tra đánh giá"
       );
     }
   }
@@ -719,7 +780,9 @@ class CustomerService {
       return response.data;
     } catch (error) {
       throw new Error(
-        error.response?.data?.error || error.message || "Không thể cập nhật đánh giá"
+        error.response?.data?.error ||
+          error.message ||
+          "Không thể cập nhật đánh giá"
       );
     }
   }

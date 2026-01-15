@@ -11,6 +11,8 @@ router.post('/orders/:orderId/complete-payment', paymentController.completePayme
 
 // [MOCK] Payment Gateway Callbacks
 router.get('/payment/vnpay-callback', paymentController.vnpayCallback);
-router.post('/payment/momo-callback', paymentController.momoCallback);
+router.post('/payment/momo-callback', paymentController.momoPayment);
+router.post('/payment/callback', paymentController.momoCallback)
+router.post('/payment/check-status', paymentController.checkStatus);
 
 export default router;

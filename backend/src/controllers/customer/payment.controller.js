@@ -1,5 +1,7 @@
-import Order from '../../models/order.js';
-import OrderItem from '../../models/orderItem.js';
+import Order from "../../models/order.js";
+import OrderItem from "../../models/orderItem.js";
+import axios from "axios";
+import crypto from "crypto";
 
 /**
  * [CUSTOMER] Yêu cầu thanh toán
@@ -9,55 +11,60 @@ import OrderItem from '../../models/orderItem.js';
 export const requestPayment = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { payment_method = 'cash' } = req.body;
+    const { payment_method = "cash" } = req.body;
 
     // 1. Lấy thông tin order
     const order = await Order.findByPk(orderId, {
       include: [
         {
-          association: 'items',
-          include: ['menu_item', { association: 'modifiers', include: ['modifier_option'] }],
+          association: "items",
+          include: [
+            "menu_item",
+            { association: "modifiers", include: ["modifier_option"] },
+          ],
         },
-        { association: 'table' },
+        { association: "table" },
       ],
     });
 
     if (!order) {
       return res.status(404).json({
         success: false,
-        error: 'Không tìm thấy đơn hàng',
+        error: "Không tìm thấy đơn hàng",
       });
     }
 
     // 2. Kiểm tra trạng thái đơn
-    if (order.status === 'payment' || order.status === 'completed') {
+    if (order.status === "payment" || order.status === "completed") {
       return res.status(400).json({
         success: false,
-        error: 'Đơn hàng đã được yêu cầu thanh toán hoặc đã hoàn tất',
+        error: "Đơn hàng đã được yêu cầu thanh toán hoặc đã hoàn tất",
       });
     }
 
-    if (order.status === 'cancelled') {
+    if (order.status === "cancelled") {
       return res.status(400).json({
         success: false,
-        error: 'Đơn hàng đã bị hủy',
+        error: "Đơn hàng đã bị hủy",
       });
     }
 
     // 3. Kiểm tra TẤT CẢ món đã served chưa
     const items = order.items || [];
-    const activeItems = items.filter(i => i.status !== 'cancelled');
-    
+    const activeItems = items.filter((i) => i.status !== "cancelled");
+
     if (activeItems.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'Không có món nào trong đơn hàng',
+        error: "Không có món nào trong đơn hàng",
       });
     }
 
-    const allServed = activeItems.every(i => i.status === 'served');
+    const allServed = activeItems.every((i) => i.status === "served");
     if (!allServed) {
-      const unservedCount = activeItems.filter(i => i.status !== 'served').length;
+      const unservedCount = activeItems.filter(
+        (i) => i.status !== "served"
+      ).length;
       return res.status(400).json({
         success: false,
         error: `Vui lòng đợi tất cả món được phục vụ (còn ${unservedCount} món chưa lên)`,
@@ -65,7 +72,7 @@ export const requestPayment = async (req, res) => {
     }
 
     // 4. Cập nhật trạng thái đơn sang 'payment'
-    order.status = 'payment';
+    order.status = "payment";
     order.payment_method = payment_method;
     await order.save();
 
@@ -73,16 +80,19 @@ export const requestPayment = async (req, res) => {
     await order.reload({
       include: [
         {
-          association: 'items',
-          include: ['menu_item', { association: 'modifiers', include: ['modifier_option'] }],
+          association: "items",
+          include: [
+            "menu_item",
+            { association: "modifiers", include: ["modifier_option"] },
+          ],
         },
-        { association: 'table' },
+        { association: "table" },
       ],
     });
 
     // 6. Emit socket thông báo Waiter
-    req.io.emit('order_status_updated', order);
-    
+    req.io.emit("order_status_updated", order);
+
     if (order.table_id) {
       req.io.emit(`order_update_table_${order.table_id}`, order);
     }
@@ -93,10 +103,10 @@ export const requestPayment = async (req, res) => {
       data: order,
     });
   } catch (error) {
-    console.error('Request payment error:', error);
+    console.error("Request payment error:", error);
     return res.status(500).json({
       success: false,
-      error: 'Lỗi máy chủ khi yêu cầu thanh toán',
+      error: "Lỗi máy chủ khi yêu cầu thanh toán",
     });
   }
 };
@@ -114,29 +124,32 @@ export const completePayment = async (req, res) => {
     const order = await Order.findByPk(orderId, {
       include: [
         {
-          association: 'items',
-          include: ['menu_item', { association: 'modifiers', include: ['modifier_option'] }],
+          association: "items",
+          include: [
+            "menu_item",
+            { association: "modifiers", include: ["modifier_option"] },
+          ],
         },
-        { association: 'table' },
+        { association: "table" },
       ],
     });
 
     if (!order) {
       return res.status(404).json({
         success: false,
-        error: 'Không tìm thấy đơn hàng',
+        error: "Không tìm thấy đơn hàng",
       });
     }
 
-    if (order.status !== 'payment') {
+    if (order.status !== "payment") {
       return res.status(400).json({
         success: false,
-        error: 'Đơn hàng chưa ở trạng thái chờ thanh toán',
+        error: "Đơn hàng chưa ở trạng thái chờ thanh toán",
       });
     }
 
     // Cập nhật thông tin thanh toán
-    order.status = 'completed';
+    order.status = "completed";
     order.transaction_id = transaction_id;
     order.payment_method = payment_method || order.payment_method;
     order.completed_at = new Date();
@@ -146,30 +159,33 @@ export const completePayment = async (req, res) => {
     await order.reload({
       include: [
         {
-          association: 'items',
-          include: ['menu_item', { association: 'modifiers', include: ['modifier_option'] }],
+          association: "items",
+          include: [
+            "menu_item",
+            { association: "modifiers", include: ["modifier_option"] },
+          ],
         },
-        { association: 'table' },
+        { association: "table" },
       ],
     });
 
     // Emit socket
-    req.io.emit('order_status_updated', order);
-    
+    req.io.emit("order_status_updated", order);
+
     if (order.table_id) {
       req.io.emit(`order_update_table_${order.table_id}`, order);
     }
 
     return res.json({
       success: true,
-      message: 'Thanh toán thành công',
+      message: "Thanh toán thành công",
       data: order,
     });
   } catch (error) {
-    console.error('Complete payment error:', error);
+    console.error("Complete payment error:", error);
     return res.status(500).json({
       success: false,
-      error: 'Lỗi máy chủ khi hoàn tất thanh toán',
+      error: "Lỗi máy chủ khi hoàn tất thanh toán",
     });
   }
 };
@@ -182,11 +198,11 @@ export const vnpayCallback = async (req, res) => {
   try {
     const { orderId, status, transactionId } = req.query;
 
-    if (status === 'success') {
+    if (status === "success") {
       // Gọi completePayment
       const order = await Order.findByPk(orderId);
-      if (order && order.status === 'payment') {
-        order.status = 'completed';
+      if (order && order.status === "payment") {
+        order.status = "completed";
         order.transaction_id = transactionId || `VNPAY_${Date.now()}`;
         order.completed_at = new Date();
         await order.save();
@@ -194,11 +210,17 @@ export const vnpayCallback = async (req, res) => {
         // Emit socket
         await order.reload({
           include: [
-            { association: 'items', include: ['menu_item', { association: 'modifiers', include: ['modifier_option'] }] },
-            { association: 'table' },
+            {
+              association: "items",
+              include: [
+                "menu_item",
+                { association: "modifiers", include: ["modifier_option"] },
+              ],
+            },
+            { association: "table" },
           ],
         });
-        req.io.emit('order_status_updated', order);
+        req.io.emit("order_status_updated", order);
         if (order.table_id) {
           req.io.emit(`order_update_table_${order.table_id}`, order);
         }
@@ -210,45 +232,286 @@ export const vnpayCallback = async (req, res) => {
       return res.redirect(`/customer/payment-failed?orderId=${orderId}`);
     }
   } catch (error) {
-    console.error('VNPay callback error:', error);
-    return res.status(500).send('Payment processing error');
+    console.error("VNPay callback error:", error);
+    return res.status(500).send("Payment processing error");
   }
 };
 
 /**
- * [MOCK] MoMo Payment Callback
+ * Tạo thanh toán MoMo
+ * POST /api/customer/payment/momo-callback
+ * Body: { orderId: string, amount: string }
  */
-export const momoCallback = async (req, res) => {
-  // Similar to VNPay
+export const momoPayment = async (req, res) => {
   try {
-    const { orderId, resultCode, transId } = req.body;
+    //https://developers.momo.vn/#/docs/en/aiov2/?id=payment-method
+    const { orderId: customerOrderId, amount: customerAmount } = req.body;
 
-    if (resultCode === '0') {
-      const order = await Order.findByPk(orderId);
-      if (order && order.status === 'payment') {
-        order.status = 'completed';
-        order.transaction_id = transId || `MOMO_${Date.now()}`;
+    // Validate input
+    if (!customerOrderId) {
+      return res.status(400).json({
+        success: false,
+        error: "Thiếu orderId",
+      });
+    }
+
+    // Kiểm tra order tồn tại
+    const order = await Order.findByPk(customerOrderId);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        error: "Không tìm thấy đơn hàng",
+      });
+    }
+
+    //parameters
+    var accessKey = process.env.MOMO_ACCESS_KEY;
+    var secretKey = process.env.MOMO_SECRET_KEY;
+    var orderInfo = `Thanh toan don hang #${customerOrderId
+      .slice(-6)
+      .toUpperCase()}`;
+    var partnerCode = "MOMO";
+
+    // Redirect về frontend sau khi thanh toán
+    var redirectUrl = `${process.env.FRONTEND_URL}/payment-result?orderId=${customerOrderId}`;
+    // IPN URL để MoMo gọi callback (cần ngrok hoặc domain public cho production)
+    var ipnUrl =
+      process.env.MOMO_IPN_URL ||
+      "https://dashing-brenda-annalistically.ngrok-free.dev/api/customer/payment/callback";
+
+    var requestType = "payWithMethod";
+    // Sử dụng amount từ request hoặc từ order - MoMo yêu cầu số nguyên (VND không có số thập phân)
+    var rawAmount = customerAmount || order.total_amount || 50000;
+    var amount = String(Math.round(Number(rawAmount)));
+
+    // MoMo test environment yêu cầu amount tối thiểu 1000 và tối đa 50,000,000
+    if (Number(amount) < 1000) {
+      amount = "1000";
+    }
+
+    // Tạo MoMo orderId riêng (MoMo yêu cầu unique)
+    var momoOrderId =
+      partnerCode + "_" + customerOrderId.slice(-8) + "_" + Date.now();
+    var requestId = momoOrderId;
+    // Lưu customerOrderId vào extraData để callback có thể map lại
+    var extraData = Buffer.from(JSON.stringify({ customerOrderId })).toString(
+      "base64"
+    );
+    var orderGroupId = "";
+    var autoCapture = true;
+    var lang = "vi";
+
+    //before sign HMAC SHA256 with format
+    var rawSignature =
+      "accessKey=" +
+      accessKey +
+      "&amount=" +
+      amount +
+      "&extraData=" +
+      extraData +
+      "&ipnUrl=" +
+      ipnUrl +
+      "&orderId=" +
+      momoOrderId +
+      "&orderInfo=" +
+      orderInfo +
+      "&partnerCode=" +
+      partnerCode +
+      "&redirectUrl=" +
+      redirectUrl +
+      "&requestId=" +
+      requestId +
+      "&requestType=" +
+      requestType;
+
+    console.log("--------------------RAW SIGNATURE----------------");
+    console.log(rawSignature);
+
+    //signature
+    var signature = crypto
+      .createHmac("sha256", secretKey)
+      .update(rawSignature)
+      .digest("hex");
+    console.log("--------------------SIGNATURE----------------");
+    console.log(signature);
+
+    //json object send to MoMo endpoint
+    const requestBody = JSON.stringify({
+      partnerCode: partnerCode,
+      partnerName: "Test",
+      storeId: "MomoTestStore",
+      requestId: requestId,
+      amount: amount,
+      orderId: momoOrderId,
+      orderInfo: orderInfo,
+      redirectUrl: redirectUrl,
+      ipnUrl: ipnUrl,
+      lang: lang,
+      requestType: requestType,
+      autoCapture: autoCapture,
+      extraData: extraData,
+      orderGroupId: orderGroupId,
+      signature: signature,
+    });
+
+    //options for axios
+    const options = {
+      method: "POST",
+      url: "https://test-payment.momo.vn/v2/gateway/api/create",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(requestBody),
+      },
+      data: requestBody,
+    };
+
+    const result = await axios(options);
+    console.log("MoMo API Response:", result.data);
+    return res.status(200).json(result.data);
+  } catch (error) {
+    console.error("MoMo payment error:", error);
+    // Log chi tiết response từ MoMo nếu có
+    if (error.response) {
+      console.error("MoMo Error Response:", error.response.data);
+      return res.status(500).json({
+        success: false,
+        message: "Lỗi từ MoMo",
+        error: error.response.data,
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi khi tạo thanh toán MoMo",
+      error: error.message,
+    });
+  }
+};
+
+export const momoCallback = async (req, res) => {
+  console.log("MoMo IPN Callback received:");
+  console.log(req.body);
+
+  try {
+    const {
+      resultCode,
+      orderId: momoOrderId,
+      transId,
+      amount,
+      extraData,
+      message,
+    } = req.body;
+
+    // Parse extraData để lấy customerOrderId
+    let customerOrderId = null;
+    if (extraData) {
+      try {
+        const decodedData = JSON.parse(
+          Buffer.from(extraData, "base64").toString("utf8")
+        );
+        customerOrderId = decodedData.customerOrderId;
+      } catch (parseError) {
+        console.error("Error parsing extraData:", parseError);
+      }
+    }
+
+    console.log("Customer Order ID:", customerOrderId);
+
+    // Kiểm tra kết quả thanh toán (resultCode = 0 là thành công)
+    if (resultCode === 0 && customerOrderId) {
+      // Tìm order và cập nhật trạng thái
+      const order = await Order.findByPk(customerOrderId, {
+        include: [
+          {
+            association: "items",
+            include: [
+              "menu_item",
+              { association: "modifiers", include: ["modifier_option"] },
+            ],
+          },
+          { association: "table" },
+        ],
+      });
+
+      if (order && order.status === "payment") {
+        order.status = "completed";
+        order.transaction_id = transId || momoOrderId;
+        order.payment_method = "momo";
         order.completed_at = new Date();
         await order.save();
 
+        // Reload và emit socket
         await order.reload({
           include: [
-            { association: 'items', include: ['menu_item', { association: 'modifiers', include: ['modifier_option'] }] },
-            { association: 'table' },
+            {
+              association: "items",
+              include: [
+                "menu_item",
+                { association: "modifiers", include: ["modifier_option"] },
+              ],
+            },
+            { association: "table" },
           ],
         });
-        req.io.emit('order_status_updated', order);
-        if (order.table_id) {
-          req.io.emit(`order_update_table_${order.table_id}`, order);
-        }
-      }
 
-      return res.json({ success: true, message: 'Payment successful' });
+        if (req.io) {
+          req.io.emit("order_status_updated", order);
+          if (order.table_id) {
+            req.io.emit(`order_update_table_${order.table_id}`, order);
+          }
+        }
+
+        console.log(
+          `Order ${customerOrderId} đã được cập nhật thành completed`
+        );
+      }
     } else {
-      return res.json({ success: false, message: 'Payment failed' });
+      console.log(
+        `MoMo payment failed with resultCode: ${resultCode}, message: ${message}`
+      );
     }
+
+    // MoMo yêu cầu trả về 204 No Content để xác nhận đã nhận IPN
+    return res.status(204).send();
   } catch (error) {
-    console.error('MoMo callback error:', error);
-    return res.status(500).json({ success: false, error: 'Payment processing error' });
+    console.error("MoMo callback error:", error);
+    // Vẫn trả về 204 để MoMo không gửi lại IPN
+    return res.status(204).send();
   }
+};
+
+export const checkStatus = async (req, res) => {
+  const { orderId } = req.body;
+
+  // const signature = accessKey=$accessKey&orderId=$orderId&partnerCode=$partnerCode
+  // &requestId=$requestId
+  var secretKey = process.env.MOMO_ACCESS_KEY;
+  var accessKey = process.env.MOMO_SECRET_KEY;
+  const rawSignature = `accessKey=${accessKey}&orderId=${orderId}&partnerCode=MOMO&requestId=${orderId}`;
+
+  const signature = crypto
+    .createHmac("sha256", secretKey)
+    .update(rawSignature)
+    .digest("hex");
+
+  const requestBody = JSON.stringify({
+    partnerCode: "MOMO",
+    requestId: orderId,
+    orderId: orderId,
+    signature: signature,
+    lang: "vi",
+  });
+
+  // options for axios
+  const options = {
+    method: "POST",
+    url: "https://test-payment.momo.vn/v2/gateway/api/query",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    data: requestBody,
+  };
+
+  const result = await axios(options);
+
+  return res.status(200).json(result.data);
 };
