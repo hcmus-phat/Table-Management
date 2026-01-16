@@ -131,13 +131,17 @@ const MenuPage = () => {
       if (updatedOrder.status === "completed") {
         Swal.fire({
           title: "Cảm ơn quý khách!",
-          text: "Bữa ăn đã hoàn tất. Bạn có hài lòng không?",
+          text: "Bữa ăn đã hoàn tất. Bạn có muốn đánh giá món ăn không?",
           icon: "success",
+          showCancelButton: true,
           confirmButtonText: "Đánh giá ngay",
+          cancelButtonText: "Để sau",
           confirmButtonColor: "#ea580c",
+          cancelButtonColor: "#9ca3af",
         }).then((result) => {
           if (result.isConfirmed) {
-            navigate(`/customer/review/${updatedOrder.id}`);
+            // Navigate đến OrderDetailPage nơi có nút review cho từng món
+            navigate(`/customer/orders/${updatedOrder.id}`);
           }
           setActiveOrder(null); // Reset trạng thái bàn trống
         });
