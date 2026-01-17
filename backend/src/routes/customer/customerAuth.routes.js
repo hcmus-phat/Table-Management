@@ -10,9 +10,14 @@ import {
   resendOTP,
   sendForgotPasswordOTP,
   verifyForgotPasswordOTP,
-  resetPassword
+  resetPassword,
+  updateProfile,
+  changePassword,
+  updateAvatar,
+  deleteAvatar
 } from "../../controllers/customer/customerAuth.Controller.js";
-import authCustomer from "../../middlewares/authCustomer.middleware.js"; 
+import authCustomer from "../../middlewares/authCustomer.middleware.js";
+import { uploadAvatar, handleAvatarUploadErrors } from "../../middlewares/uploadAvatar.middleware.js"; // IMPORT MIDDLEWARE MỚI
 
 const router = express.Router();
 
@@ -22,7 +27,7 @@ const router = express.Router();
 router.post("/register", register);
 router.post("/login", login);
 
-// Đồng bộ Google user (THÊM ROUTE MỚI)
+// Đồng bộ Google user
 router.post("/sync-google", syncGoogleUser);
 
 // Kiểm tra email đã tồn tại chưa
@@ -31,7 +36,7 @@ router.get("/check-email", checkEmailExists);
 // OTP routes cho xác thực email
 router.post("/verify-email", verifyEmailOTP);
 
-//Gửi lại mã OTP
+// Gửi lại mã OTP
 router.post("/resend-otp", resendOTP);
 
 // Gửi OTP quên mật khẩu
@@ -45,7 +50,28 @@ router.post("/forgot-password/reset", resetPassword);
 
 // ========== PROTECTED ROUTES (cần auth) ==========
 
+// Lấy thông tin cá nhân
 router.get("/me", authCustomer, getMe);
-router.put("/me", authCustomer, updateMe);  
+
+// Cập nhật thông tin cá nhân 
+router.put("/me", authCustomer, updateMe);
+
+// Cập nhật profile (chỉ username và phone)
+router.put("/profile", authCustomer, updateProfile);
+
+// Đổi mật khẩu (cần mật khẩu cũ)
+router.put("/password", authCustomer, changePassword);
+
+// ========== AVATAR UPLOAD ROUTE ==========
+// Cập nhật avatar - Upload file lên Cloudinary
+router.put("/avatar", 
+  authCustomer,
+  uploadAvatar,
+  handleAvatarUploadErrors,
+  updateAvatar
+);
+
+// route DELETE avatar
+router.delete("/avatar", authCustomer, deleteAvatar);
 
 export default router;

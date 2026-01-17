@@ -4,6 +4,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 const MenuHeader = ({ tableNumber, cartItemCount }) => {
   const [customer, setCustomer] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+  const [dropdownAvatarError, setDropdownAvatarError] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -96,9 +98,18 @@ const MenuHeader = ({ tableNumber, cartItemCount }) => {
                     onClick={() => setShowDropdown(!showDropdown)}
                     className="flex items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-full hover:bg-white/30 transition-colors"
                   >
-                    {/* Hiển thị avatar/icon */}
-                    <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center text-amber-600 font-bold">
-                      {getInitial()}
+                    {/* Hiển thị avatar/icon trên button */}
+                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-amber-600 font-bold text-sm overflow-hidden">
+                      {customer.avatar && !avatarError ? (
+                        <img 
+                          src={customer.avatar} 
+                          alt="Avatar" 
+                          className="w-full h-full object-cover"
+                          onError={() => setAvatarError(true)}
+                        />
+                      ) : (
+                        <span>{getInitial()}</span>
+                      )}
                     </div>
                     <span className="hidden sm:inline">{getDisplayName()}</span>
                     <svg
@@ -150,8 +161,18 @@ const MenuHeader = ({ tableNumber, cartItemCount }) => {
                   <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg z-30 border">
                     <div className="p-4 border-b">
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-amber-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                          {getInitial()}
+                        {/* Hiển thị avatar trong dropdown */}
+                        <div className="w-10 h-10 bg-amber-600 rounded-full flex items-center justify-center text-white font-bold text-lg overflow-hidden">
+                          {customer.avatar && !dropdownAvatarError ? (
+                            <img 
+                              src={customer.avatar} 
+                              alt="Avatar" 
+                              className="w-full h-full object-cover"
+                              onError={() => setDropdownAvatarError(true)}
+                            />
+                          ) : (
+                            <span>{getInitial()}</span>
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-gray-900 truncate">

@@ -3,6 +3,7 @@ import VerifiedEmail from "../models/verifiedEmail.js";
 import jwt from "jsonwebtoken";
 import OTPService from "./otp.service.js";
 import emailService from "./email.service.js";
+import { Op } from 'sequelize';
 
 class CustomerService {
 
@@ -91,9 +92,7 @@ class CustomerService {
             if (customer) {
                 // Cập nhật username nếu có thay đổi
                 if (username && username !== customer.username) {
-                    console.log('[DEBUG] Updating username from', customer.username, 'to', username);
-                    customer.username = username;
-                    await customer.save();
+                    console.log('Đã đăng nhâp trước đó');
                 }
             } else {
                 console.log('[DEBUG] Creating new Google user');
@@ -286,6 +285,180 @@ class CustomerService {
             };
         } catch (error) {
             console.error("Verify forgot password OTP error:", error);
+            throw error;
+        }
+    }
+
+    // Thêm vào class CustomerService
+
+    // Cập nhật thông tin customer (chỉ username và phone)
+
+    async updateCustomerProfile(uid, updateData) {
+        try {
+            const customer = await Customer.findByPk(uid);
+            if (!customer) throw new Error("Không tìm thấy tài khoản");
+
+            // Chỉ lấy các trường được phép cập nhật
+            const allowedUpdates = {};
+            
+            // Kiểm tra và xử lý username
+            if (updateData.username !== undefined) {
+                // Trim và validate
+                const newUsername = updateData.username.trim();
+                
+                if (newUsername !== customer.username) {
+                    // SỬA LỖI Ở ĐÂY: Thay $ne bằng Op.ne
+                    const exists = await Customer.findOne({ 
+                        where: { 
+                            username: newUsername,
+                            uid: { [Op.ne]: uid } // SỬA: $ne → [Op.ne]
+                        } 
+                    });
+                    if (exists) throw new Error("Username đã tồn tại");
+                    
+                    if (newUsername.length < 3 || newUsername.length > 30) {
+                        throw new Error("Username phải từ 3-30 ký tự");
+                    }
+                    
+                    allowedUpdates.username = newUsername;
+                }
+            }
+
+            // Kiểm tra và xử lý phone
+            if (updateData.phone !== undefined) {
+                const newPhone = updateData.phone.trim();
+                
+                if (newPhone !== customer.phone) {
+                    // Validate định dạng số điện thoại
+                    const phoneRegex = /^[0-9]+$/;
+                    if (!phoneRegex.test(newPhone)) {
+                        throw new Error("Số điện thoại chỉ được chứa chữ số");
+                    }
+                    
+                    if (newPhone.length !== 10) {
+                        throw new Error("Số điện thoại phải có đúng 10 chữ số");
+                    }
+                    
+        
+                    
+                    allowedUpdates.phone = newPhone;
+                }
+            }
+
+            // Nếu không có gì để cập nhật
+            if (Object.keys(allowedUpdates).length === 0) {
+                throw new Error("Không có thông tin nào để cập nhật");
+            }
+
+            // Thực hiện cập nhật
+            await customer.update(allowedUpdates);
+            
+            // Lấy lại thông tin đã cập nhật (loại bỏ password)
+            const updatedCustomer = await Customer.findByPk(uid, {
+                attributes: { exclude: ['password'] }
+            });
+
+            return {
+                success: true,
+                message: "Cập nhật thông tin thành công",
+                customer: updatedCustomer
+            };
+            
+        } catch (error) {
+            console.error("Update customer profile error:", error);
+            throw error;
+        }
+    }
+
+    // Đổi mật khẩu (cần password cũ)
+    async changePassword(uid, oldPassword, newPassword) {
+        try {
+            const customer = await Customer.findByPk(uid);
+            if (!customer) throw new Error("Không tìm thấy tài khoản");
+
+            // Kiểm tra mật khẩu cũ
+            const isValid = await customer.comparePassword(oldPassword);
+            if (!isValid) {
+                throw new Error("Mật khẩu cũ không đúng");
+            }
+
+            // Không cho đổi cùng mật khẩu cũ
+            if (oldPassword === newPassword) {
+                throw new Error("Mật khẩu mới không được trùng với mật khẩu cũ");
+            }
+
+            // Validate độ dài mật khẩu mới
+            if (newPassword.length < 6) {
+                throw new Error("Mật khẩu mới phải có ít nhất 6 ký tự");
+            }
+
+            // Cập nhật mật khẩu
+            customer.password = newPassword;
+            await customer.save();
+
+            return {
+                success: true,
+                message: "Đổi mật khẩu thành công"
+            };
+            
+        } catch (error) {
+            console.error("Change password error:", error);
+            throw error;
+        }
+    }
+
+   
+    async updateAvatar(uid, avatarUrl) {
+        try {
+            const customer = await Customer.findByPk(uid);
+            if (!customer) throw new Error("Không tìm thấy tài khoản");
+
+            // Validate URL (có thể thêm logic validate image URL)
+            if (!avatarUrl || typeof avatarUrl !== 'string') {
+                throw new Error("URL avatar không hợp lệ");
+            }
+
+            // Cập nhật avatar
+            await customer.update({ avatar: avatarUrl });
+            
+            return {
+                success: true,
+                message: "Cập nhật ảnh đại diện thành công",
+                avatarUrl: avatarUrl
+            };
+            
+        } catch (error) {
+            console.error("Update avatar error:", error);
+            throw error;
+        }
+    }
+
+    async deleteAvatar(uid) {
+        try {
+            const customer = await Customer.findByPk(uid);
+            if (!customer) throw new Error("Không tìm thấy tài khoản");
+
+            // Lưu avatar cũ để xóa trên Cloudinary (nếu muốn)
+                const oldAvatar = customer.avatar;
+                
+                // Xóa avatar (set thành null)
+                await customer.update({ avatar: null });
+                
+                // TODO: Nếu muốn xóa ảnh trên Cloudinary
+                // if (oldAvatar && oldAvatar.includes('cloudinary.com')) {
+                //   await deleteFromCloudinary(oldAvatar);
+                // }
+            
+            return {
+                success: true,
+                message: "Xóa ảnh đại diện thành công",
+                data: {
+                    avatar: null
+                }
+            };
+            
+        } catch (error) {
+            console.error("Delete avatar error:", error);
             throw error;
         }
     }

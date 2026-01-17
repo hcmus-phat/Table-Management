@@ -2,6 +2,7 @@ import customerService from "../../services/customer.service.js";
 import otpService from "../../services/otp.service.js";  
 import customerValidator from "../../validators/customer.validator.js";
 import Customer from "../../models/customer.js";
+import { uploadBufferToCloudinary } from "../../../utils/cloudinary.js";
 
 // --- REGISTER ---
 export const register = async (req, res) => {
@@ -30,6 +31,8 @@ export const register = async (req, res) => {
           uid: customerData.uid,
           username: customerData.username,
           email: customerData.email,
+          phone : customerData.phone || null,
+          avatar: customerData.avatar || null,
           isEmailVerified: false
         },
         accessToken: result.accessToken,
@@ -74,6 +77,8 @@ export const syncGoogleUser = async (req, res) => {
         customer: {
           username: result.customer.username,
           email: result.customer.email,
+          phone : result.customer.phone || null,
+          avatar: result.customer.avatar || null,
         },
         accessToken: result.accessToken
       }
@@ -107,6 +112,10 @@ export const login = async (req, res) => {
 
       const customerData = result.customer.toJSON();
       delete customerData.password;
+
+      console.log("Customer data from login:", customerData);
+      console.log("Phone field exists:", 'phone' in customerData);
+      console.log("Phone value:", customerData.phone);
 
       return res.status(200).json({
         success: true,
@@ -288,6 +297,218 @@ export const resetPassword = async (req, res) => {
     }
 };
 
+export const updateProfile = async (req, res) => {
+  try {
+    const uid = req.customer?.uid || req.user?.uid;
+    
+    if (!uid) {
+      return res.status(401).json({ 
+        success: false,
+        error: "Không tìm thấy thông tin người dùng" 
+      });
+    }
+
+    // Validate chỉ username và phone
+    const { error } = customerValidator.update.validate(req.body);
+    if (error) {
+      return res.status(400).json({ 
+        success: false,
+        error: error.details[0].message 
+      });
+    }
+
+    // Kiểm tra có trường không được phép không
+    const allowedFields = ['username', 'phone'];
+    const invalidFields = Object.keys(req.body).filter(field => !allowedFields.includes(field));
+    
+    if (invalidFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: `Chỉ được phép cập nhật username và phone. Trường không hợp lệ: ${invalidFields.join(', ')}`
+      });
+    }
+
+    const result = await customerService.updateCustomerProfile(uid, req.body);
+
+    return res.status(200).json({
+      success: true,
+      message: result.message || "Cập nhật thông tin thành công",
+      data: {
+        customer: result.customer
+      }
+    });
+  } catch (error) {
+    console.error("Update profile error:", error);
+    return res.status(400).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+};
+
+
+export const deleteAvatar = async (req, res) => {
+  try {
+    const customerId = req.user?.uid || req.user?.id;
+    
+    if (!customerId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Không tìm thấy thông tin người dùng" 
+      });
+    }
+
+    // Gọi service để xóa avatar
+    const result = await customerService.deleteAvatar(customerId);
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result.data
+    });
+
+  } catch (error) {
+    console.error('Delete avatar error:', error);
+    
+    // Phân loại lỗi
+    let statusCode = 500;
+    let errorMessage = "Lỗi server khi xóa avatar";
+    
+    if (error.message.includes('Không tìm thấy')) {
+      statusCode = 404;
+      errorMessage = error.message;
+    } else if (error.message.includes('Cloudinary') || error.message.includes('upload')) {
+      errorMessage = "Lỗi khi xóa ảnh trên Cloudinary";
+    }
+    
+    return res.status(statusCode).json({
+      success: false,
+      message: errorMessage,
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// --- CHANGE PASSWORD ---
+export const changePassword = async (req, res) => {
+  try {
+    const uid = req.customer?.uid || req.user?.uid;
+    
+    if (!uid) {
+      return res.status(401).json({ 
+        success: false,
+        error: "Không tìm thấy thông tin người dùng" 
+      });
+    }
+
+    // Validate input
+    const { error } = customerValidator.changePassword.validate(req.body);
+    if (error) {
+      return res.status(400).json({ 
+        success: false,
+        error: error.details[0].message 
+      });
+    }
+
+    const { oldPassword, newPassword } = req.body;
+
+    const result = await customerService.changePassword(uid, oldPassword, newPassword);
+
+    return res.status(200).json({
+      success: true,
+      message: result.message || "Đổi mật khẩu thành công"
+    });
+  } catch (error) {
+    console.error("Change password error:", error);
+    return res.status(400).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+};
+
+// --- UPDATE AVATAR ---
+export const updateAvatar = async (req, res) => {
+  try {
+    // Lấy customer ID từ middleware auth
+     const customerId = req.user?.uid || req.user?.id;
+    
+    if (!customerId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Không tìm thấy thông tin người dùng" 
+      });
+    }
+
+    // Kiểm tra có file upload không
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Vui lòng chọn ảnh đại diện" 
+      });
+    }
+
+    // Tìm customer
+    const customer = await Customer.findByPk(customerId);
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy người dùng'
+      });
+    }
+
+    const file = req.file;
+    const timestamp = Date.now();
+    const filename = `avatar_${customerId}_${timestamp}`;
+    const folder = 'restaurant/customer-avatars';
+
+    console.log('Uploading avatar to Cloudinary:', {
+      customerId,
+      originalname: file.originalname,
+      size: `${(file.size / 1024).toFixed(2)} KB`
+    });
+
+    // Upload lên Cloudinary
+    const avatarUrl = await uploadBufferToCloudinary(
+      file.buffer,
+      folder,
+      filename,
+      {
+        width: 200,
+        height: 200,
+        crop: 'fill',
+        gravity: 'face',
+        quality: 'auto:best',
+        format: 'webp'
+      }
+    );
+
+    // Cập nhật vào database
+    customer.avatar = avatarUrl;
+    await customer.save();
+
+    console.log('Avatar updated successfully:', avatarUrl);
+
+    // Trả về response
+    return res.status(200).json({
+      success: true,
+      message: "Cập nhật ảnh thành công",
+      data: {
+        avatar: avatarUrl
+      }
+    });
+
+  } catch (error) {
+    console.error('Update avatar error:', error);
+    
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi server khi cập nhật avatar",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 // --- 3. GET CUSTOMER PROFILE ---
 export const getMe = async (req, res) => {
   try {
@@ -314,6 +535,7 @@ export const getMe = async (req, res) => {
           fullName: customerData.fullName || null,
           phone: customerData.phone || null,
           address: customerData.address || null,
+          avatar: customerData.avatar || null,
           dateOfBirth: customerData.dateOfBirth || null,
           createdAt: customerData.createdAt,
           updatedAt: customerData.updatedAt

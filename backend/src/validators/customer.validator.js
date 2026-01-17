@@ -42,13 +42,25 @@ const customerValidator = {
   }),
 
   update: Joi.object({
-    username: Joi.string().min(3).max(30),
-    email: Joi.string().email(),
-    fullName: Joi.string().max(100),
-    phone: Joi.string().pattern(/^[0-9]+$/).max(15),
-    address: Joi.string(),
-    dateOfBirth: Joi.date()
-  }),
+    username: Joi.string()
+        .min(3)
+        .max(30)
+        .optional()
+        .messages({
+            'string.base': 'Tên người dùng phải là chuỗi',
+            'string.min': 'Tên người dùng phải có ít nhất 3 ký tự',
+            'string.max': 'Tên người dùng không quá 30 ký tự'
+        }),
+    
+    phone: Joi.string()
+        .pattern(/^[0-9]+$/)
+        .length(10)
+        .optional()
+        .messages({
+            'string.pattern.base': 'Số điện thoại chỉ được chứa chữ số',
+            'string.length': 'Số điện thoại phải có đúng 10 chữ số'
+        })
+  }).min(1),
 
   changePassword: Joi.object({
     oldPassword: Joi.string().required(),

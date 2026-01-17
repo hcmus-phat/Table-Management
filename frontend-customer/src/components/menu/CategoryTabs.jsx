@@ -3,6 +3,23 @@ import React from "react";
 const CategoryTabs = ({ categories, activeCategory, onSelectCategory }) => {
 	return (
 		<div className="flex flex-wrap gap-2 mb-6 overflow-x-auto pb-2">
+			{/* Tab "Tất cả" - Hiển thị đầu tiên */}
+			<button
+				key="all"
+				onClick={() => onSelectCategory("all")}
+				className={`px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
+					activeCategory === "all"
+						? "bg-amber-600 text-white shadow-md"
+						: "bg-white text-stone-700 hover:bg-amber-50 shadow-sm border border-amber-200"
+				}`}
+			>
+				Tất cả
+				<span className="ml-2 text-xs opacity-80">
+					({categories.reduce((total, cat) => total + (cat.items?.length || 0), 0)})
+				</span>
+			</button>
+
+			{/* Các tab category khác */}
 			{categories
 				.sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
 				.map((category) => (

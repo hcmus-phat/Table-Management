@@ -19,6 +19,7 @@ class CustomerService {
     }
   }
 
+  //Hàm đồng bộ user Google
   async syncGoogleUser(userData) {
     try {
       // Gọi API backend
@@ -31,7 +32,7 @@ class CustomerService {
         // Lưu vào localStorage GIỐNG NHƯ LOGIN
         localStorage.setItem("customer_token", accessToken);
         localStorage.setItem("customer_info", JSON.stringify(customer));
-        localStorage.setItem("auth_method", "google");
+        localStorage.setItem("auth_method", "google"); // Lưu phương thức đăng nhập là Google
 
         console.log(
           "[CUSTOMER SERVICE] Đồng bộ thành công, đã lưu vào localStorage"
@@ -72,6 +73,7 @@ class CustomerService {
           needsVerification: true,
           customerId: response.data.data?.customerId,
           email: response.data.data?.email,
+          phone: response.data.data?.phone,
           username: response.data.data?.username,
           message: response.data.message || "Vui lòng xác thực email",
         };
@@ -83,7 +85,7 @@ class CustomerService {
 
         localStorage.setItem("customer_token", accessToken);
         localStorage.setItem("customer_info", JSON.stringify(customer));
-        localStorage.setItem("auth_method", "email");
+        localStorage.setItem("auth_method", "email");  // Lưu phương thức đăng nhập là email
 
         return {
           success: true,
@@ -241,6 +243,108 @@ class CustomerService {
     }
   }
 
+
+  // ========== PROTECTED CUSTOMER METHODS ==========
+
+  // Lấy thông tin profile (protected)
+  async updateProfile(updateData) {
+    try {
+      if (!this.isLoggedIn()) {
+        throw new Error("Chưa đăng nhập");
+      }
+
+      const response = await customerApi.put("/customer/profile", updateData);
+      return response.data;
+    } catch (error) {
+      console.error("Update profile error:", error);
+      throw new Error(
+        error.response?.data?.error ||
+          error.message ||
+          "Không thể cập nhật thông tin"
+      );
+    }
+  }
+
+  // Đổi mật khẩu (cần mật khẩu cũ)
+  async changePassword(oldPassword, newPassword) {
+    try {
+      if (!this.isLoggedIn()) {
+        throw new Error("Chưa đăng nhập");
+      }
+
+      const response = await customerApi.put("/customer/password", {
+        oldPassword,
+        newPassword,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Change password error:", error);
+      throw new Error(
+        error.response?.data?.error ||
+          error.message ||
+          "Không thể đổi mật khẩu"
+      );
+    }
+  }
+
+  // Cập nhật avatar 
+  async updateAvatar(avatarFile) {
+    try {
+      if (!this.isLoggedIn()) {
+        throw new Error("Chưa đăng nhập");
+      }
+
+      // Chỉ nhận File object
+      if (!(avatarFile instanceof File)) {
+        throw new Error("Phải là đối tượng File");
+      }
+
+      const formData = new FormData();
+      formData.append("avatar", avatarFile);
+
+      const response = await customerApi.put("/customer/avatar", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      // Cập nhật localStorage với avatar mới
+      if (response.data.success) {
+        const customerInfo = JSON.parse(localStorage.getItem("customer_info") || "{}");
+        customerInfo.avatar = response.data.data.avatar;
+        localStorage.setItem("customer_info", JSON.stringify(customerInfo));
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error("Update avatar error:", error);
+      throw new Error(
+        error.response?.data?.message ||
+        error.message ||
+        "Không thể cập nhật ảnh đại diện"
+      );
+    }
+  }
+
+
+
+  async deleteAvatar() {
+    try {
+      if (!this.isLoggedIn()) {
+        throw new Error("Chưa đăng nhập");
+      }
+
+      const response = await customerApi.delete("/customer/avatar");
+      return response.data;
+    } catch (error) {
+      console.error("Delete avatar error:", error);
+      throw new Error(
+        error.response?.data?.error ||
+          error.message ||
+          "Không thể xóa ảnh đại diện"
+      );
+    }
+  }
   // Lấy thông tin customer (protected)
   async getMe() {
     try {
@@ -275,26 +379,6 @@ class CustomerService {
         error.response?.data?.error ||
           error.message ||
           "Không thể cập nhật thông tin"
-      );
-    }
-  }
-
-  // Đổi mật khẩu (protected)
-  async changePassword(oldPassword, newPassword) {
-    try {
-      if (!this.isLoggedIn()) {
-        throw new Error("Chưa đăng nhập");
-      }
-
-      const response = await customerApi.put("/customer/change-password", {
-        oldPassword,
-        newPassword,
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Change password error:", error);
-      throw new Error(
-        error.response?.data?.error || error.message || "Không thể đổi mật khẩu"
       );
     }
   }

@@ -12,6 +12,7 @@ import tablePublicRoutes from "../routes/restaurant/tablePublic.routes.js"
 dotenv.config();
 
 const app = express();
+//app.use('/uploads', express.static('uploads'));
 const PORT = process.env.PORT || 5000;
 
 // [NEW] Setup HTTP Server & Socket.IO

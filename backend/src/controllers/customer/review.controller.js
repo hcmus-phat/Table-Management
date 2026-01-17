@@ -7,11 +7,7 @@ import sequelize from '../../config/database.js';
 import { Op } from 'sequelize';
 
 // POST /api/customer/reviews - Create a review for a menu item
-// src/controllers/customer/review.controller.js
-import MenuItemReview from '../../models/menuItemReview.js';
-import MenuItem from '../../models/menuItem.js';
-import Order from '../../models/order.js';
-import OrderItem from '../../models/orderItem.js';
+// src/controllers/customer/review.controller.j
 
 export const createReview = async (req, res) => {
   try {

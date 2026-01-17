@@ -44,7 +44,7 @@ const MenuPage = () => {
   // Data
   const [tableInfo, setTableInfo] = useState(null);
   const [categories, setCategories] = useState([]);
-  const [activeCategory, setActiveCategory] = useState(null);
+  const [activeCategory, setActiveCategory] = useState("all"); // Mặc định là "all"
 
   // Modal & Selection
   const [detailItem, setDetailItem] = useState(null);
@@ -235,13 +235,8 @@ const MenuPage = () => {
       }));
 
       setCategories(categoriesWithItems);
-      // Mặc định chọn tab đầu tiên có món
-      const firstValidCat = categoriesWithItems.find((c) => c.items.length > 0);
-      if (firstValidCat) {
-        setActiveCategory(firstValidCat.id);
-      } else if (categoriesWithItems.length > 0) {
-        setActiveCategory(categoriesWithItems[0].id);
-      }
+
+      // Mặc định chọn tab "all" (đã set mặc định ở state)
     } catch (err) {
       setMenuError("Không thể hiển thị thực đơn.");
     } finally {
@@ -399,6 +394,34 @@ const MenuPage = () => {
 
   // --- 5. RENDER ---
 
+  // Tính toán danh sách món theo category đang chọn
+  const getCurrentItems = () => {
+    if (activeCategory === "all") {
+      // Lấy tất cả món từ tất cả categories
+      return categories.reduce((allItems, category) => {
+        if (category.items && category.items.length > 0) {
+          return [...allItems, ...category.items];
+        }
+        return allItems;
+      }, []);
+    } else {
+      // Lấy món từ category được chọn
+      const activeCategoryData = categories.find(cat => cat.id === activeCategory);
+      return activeCategoryData?.items || [];
+    }
+  };
+
+  const currentItems = getCurrentItems();
+
+  // Lấy tên category để hiển thị
+  const getCategoryTitle = () => {
+    if (activeCategory === "all") {
+      return "Tất cả món ăn";
+    }
+    const activeCategoryData = categories.find(cat => cat.id === activeCategory);
+    return activeCategoryData?.name || "Thực đơn";
+  };
+
   if (loading)
     return (
       <div className="h-screen flex items-center justify-center">
@@ -411,10 +434,6 @@ const MenuPage = () => {
         <Alert type="error" message={error} />
       </div>
     );
-
-  const activeCategoryData = categories.find(
-    (cat) => cat.id === activeCategory
-  );
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -439,11 +458,14 @@ const MenuPage = () => {
         ) : (
           <div className="mt-6">
             <h3 className="text-xl font-bold mb-4 text-gray-800">
-              {activeCategoryData?.name || "Thực đơn"}
+              {getCategoryTitle()}
+              <span className="ml-2 text-sm font-normal text-gray-500">
+                ({currentItems.length} món)
+              </span>
             </h3>
-            {activeCategoryData && activeCategoryData.items.length > 0 ? (
+            {currentItems.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {activeCategoryData.items.map((item) => (
+                {currentItems.map((item) => (
                   <MenuItemCard
                     key={item.id}
                     item={item}
@@ -454,7 +476,9 @@ const MenuPage = () => {
               </div>
             ) : (
               <div className="py-10 text-center text-gray-500 bg-white rounded-xl border border-dashed">
-                Chưa có món ăn trong danh mục này.
+                {activeCategory === "all" 
+                  ? "Chưa có món ăn nào trong thực đơn." 
+                  : "Chưa có món ăn trong danh mục này."}
               </div>
             )}
           </div>
