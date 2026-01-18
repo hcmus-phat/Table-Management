@@ -179,7 +179,7 @@ const Kitchen = () => {
   const filteredOrders = orders
     .filter((o) => {
       // Bếp tuyệt đối không hiển thị đơn Hủy, Hoàn tất hoặc PENDING (chưa duyệt)
-      if (["completed", "cancelled", "pending", "served"].includes(o.status))
+      if (["completed", "cancelled", "pending", "served", "payment_request", "payment_pending"].includes(o.status))
         return false;
 
       if (filter === "all") return true;

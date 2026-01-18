@@ -2,16 +2,17 @@ import OrderItemService from "../../services/orderItem.service.js";
 import db from '../../models/index.js';
 const { Order, OrderItem, OrderItemModifier, MenuItem, ModifierOption, Table } = db;
 
+
 // POST: Tạo mới OrderItem (Khách gọi thêm 1 món lẻ)
-export const createOrderItem = async (req, res) => {
+export const createOrderItems = async (req, res) => {
     try {
-        const { order_id, menu_item_id } = req.body;
+        const { order_id, items } = req.body;
 
         // 1. Validate cơ bản
-        if (!order_id || !menu_item_id) {
+        if (!order_id || !items || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({
                 success: false,
-                message: 'Thiếu order_id hoặc menu_item_id'
+                message: 'Dữ liệu không hợp lệ. Cần order_id và danh sách items.'
             });
         }
 
@@ -41,7 +42,10 @@ export const createOrderItem = async (req, res) => {
 
         // 4. Gọi Service tạo món
         // Service này sẽ INSERT vào DB với status mặc định là 'pending'
-        await OrderItemService.createOrderItem(req.body);
+        await OrderItemService.createOrderItems({
+            order_id,
+            items 
+        });
 
 
         if (['ready', 'served'].includes(existingOrder.status)) {
@@ -54,11 +58,7 @@ export const createOrderItem = async (req, res) => {
         // Query này y hệt bên Kitchen Controller để đảm bảo dữ liệu đồng nhất
         const fullOrder = await Order.findByPk(order_id, {
             include: [
-                { 
-                    model: Table, 
-                    as: 'table',
-                    attributes: ['id', 'table_number'] 
-                }, 
+                { model: Table, as: 'table', attributes: ['id', 'table_number'] },
                 { 
                     model: OrderItem, 
                     as: 'items',
@@ -71,6 +71,8 @@ export const createOrderItem = async (req, res) => {
                         {
                             model: OrderItemModifier,
                             as: 'modifiers',
+                            // ✅ QUAN TRỌNG: Lấy giá Snapshot để Socket hiện đúng
+                            attributes: ['id', 'price', 'modifier_option_id'], 
                             include: [{
                                 model: ModifierOption,
                                 as: 'modifier_option',
@@ -82,26 +84,19 @@ export const createOrderItem = async (req, res) => {
             ]
         });
 
-        if (fullOrder) {
-            // 4. Bắn Socket cho Waiter - Khách đặt món MỚI
-            if (req.io) {
-                // ✅ Event rõ ràng: Đơn mới từ khách (chưa duyệt)
-                req.io.emit('new_order_created', fullOrder);
-                // Bắn thêm event này để chắc chắn UI Waiter cập nhật status mới
-                req.io.emit('order_status_updated', fullOrder);
-
-                // Bắn riêng cho bàn đó (để khách thấy món mình vừa đặt hiện lên ngay)
-                if (fullOrder.table) {
-                    req.io.emit(`order_update_table_${fullOrder.table.id}`, fullOrder);
-                }
-
-                console.log(`🔔 Socket sent: new_order_created for Table ${fullOrder.table?.table_number}`);
+        if (fullOrder && req.io) {
+            req.io.emit('new_order_created', fullOrder);
+            req.io.emit('order_status_updated', fullOrder);
+            
+            if (fullOrder.table) {
+                req.io.emit(`order_update_table_${fullOrder.table.id}`, fullOrder);
             }
+            console.log(`🔔 Socket sent: Bulk Add Items for Table ${fullOrder.table?.table_number}`);
         }
 
         res.status(201).json({
             success: true,
-            message: 'Thêm món ăn thành công',
+            message: `Đã thêm ${items.length} món thành công`,
             data: fullOrder
         });
 

@@ -1,5 +1,7 @@
 import OrderService from "../../services/orderHistory.service.js";
+
 import { createOrderSchema } from "../../validators/order.validation.js";
+
 
 export const createOrder = async (req, res) => {
   try {
@@ -18,7 +20,23 @@ export const createOrder = async (req, res) => {
       customer_id: customerID,
       table_id: value.table_id,
       total_amount: value.total_amount,
+      items: value.items, // <--- 🔥 QUAN TRỌNG: Phải truyền items xuống
+      note: value.note || ""
     });
+
+    if (req.io) {
+        // Bắn tín hiệu chung "Có đơn mới"
+        req.io.emit('new_order_created', order); 
+        req.io.emit('order_status_updated', order);
+        
+        // Bắn riêng cho bàn đó (để máy khách tự cập nhật trạng thái "Đang chờ xác nhận")
+        req.io.emit(`order_update_table_${value.table_id}`, {
+            ...order.toJSON ? order.toJSON() : order, 
+            status: 'pending'
+        });
+        
+        console.log(`🔔 Socket sent: New Order for Table ${value.table_id}`);
+    }
 
     return res.status(201).json({
       success: true,

@@ -26,6 +26,12 @@ OrderItemModifier.init(
         key: "id",
       },
     },
+    price: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0,
+      comment: "Giá modifier tại thời điểm đặt đơn (Snapshot)"
+    },
     created_at: {
       type: DataTypes.DATE,
       allowNull: false,

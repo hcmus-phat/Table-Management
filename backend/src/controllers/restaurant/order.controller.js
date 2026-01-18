@@ -275,7 +275,21 @@ export const confirmBill = async (req, res) => {
         // 5. Socket thông báo
         if (req.io) {
             const fullOrder = await Order.findByPk(orderId, {
-                include: [{ model: Table, as: 'table' }, { model: OrderItem, as: 'items' }]
+                include: [
+                    { model: Table, as: 'table' },
+                    { 
+                        model: OrderItem, 
+                        as: 'items',
+                        include: [
+                            { model: MenuItem, as: 'menu_item' },
+                            { 
+                                model: OrderItemModifier, 
+                                as: 'modifiers',
+                                include: [{ model: ModifierOption, as: 'modifier_option' }]
+                            }
+                        ]
+                    }
+                ]
             });
             
             req.io.emit('order_status_updated', fullOrder);
@@ -305,10 +319,10 @@ export const markAsPaid = async (req, res) => {
         order.completed_at = new Date();
         await order.save();
 
-        // 2. Giải phóng bàn
-        if (order.table_id) {
-            await Table.update({ status: 'available' }, { where: { id: order.table_id } });
-        }
+        // // 2. Giải phóng bàn
+        // if (order.table_id) {
+        //     await Table.update({ status: 'available' }, { where: { id: order.table_id } });
+        // }
 
         // 3. Socket thông báo
         if (req.io) {

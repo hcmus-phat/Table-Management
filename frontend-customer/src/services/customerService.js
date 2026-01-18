@@ -385,82 +385,55 @@ class CustomerService {
 
   // ========== ORDER METHODS ==========
 
-  // Tạo order
-  async createOrder(tableId, totalAmount) {
-    const numericTotal = Number(totalAmount);
+  // // Tạo order
+  // async createOrder(tableId, totalAmount) {
+  //   const numericTotal = Number(totalAmount);
 
-    if (isNaN(numericTotal) || numericTotal <= 0) {
-      throw new Error("Tổng tiền không hợp lệ");
-    }
+  //   if (isNaN(numericTotal) || numericTotal <= 0) {
+  //     throw new Error("Tổng tiền không hợp lệ");
+  //   }
 
-    const orderData = {
-      table_id: tableId,
-      total_amount: numericTotal,
-    };
+  //   const orderData = {
+  //     table_id: tableId,
+  //     total_amount: numericTotal,
+  //   };
 
-    const token = this.getToken();
-    const apiExecutor = token ? customerApi : publicApi;
-    const response = await apiExecutor.post("/customer/orders", orderData);
+  //   const token = this.getToken();
+  //   const apiExecutor = token ? customerApi : publicApi;
+  //   const response = await apiExecutor.post("/customer/orders", orderData);
 
-    return response.data;
-  }
+  //   return response.data;
+  // }
 
   // Tạo order với items
   async createOrderWithItems(tableId, cartItems) {
-    // Tính tổng tiền
-    let totalAmount = 0;
+    const cleanItems = cartItems.map((item) => ({
+        id: item.id,
+        quantity: Number(item.quantity),
+        // Không cần gửi price, Backend tự tra
+        notes: item.notes || item.note || "",
+        modifiers: (item.modifiers || []).map((mod) => ({
+            id: mod.id || mod.optionId,
+            // Vẫn gửi giá modifier snapshot (hoặc để backend tự tra nốt cũng được, nhưng tạm thời gửi để lưu snapshot)
+            price: Number(mod.price) || Number(mod.price_adjustment) || 0,
+        })),
+    }));
 
-    cartItems.forEach((item) => {
-      const itemPrice = Number(item.price) || 0;
-      const itemQuantity = Number(item.quantity) || 1;
-      totalAmount += itemPrice * itemQuantity;
-    });
+    const orderPayload = {
+      table_id: tableId,
+      items: cleanItems,
+    };
 
-    if (isNaN(totalAmount) || totalAmount <= 0) {
-      throw new Error("Tổng tiền không hợp lệ");
-    }
-
-    const orderRes = await this.createOrder(tableId, totalAmount);
-    const orderId = orderRes.data?.id;
-
-    if (!orderId) {
-      throw new Error("Không thể khởi tạo ID đơn hàng");
-    }
+    console.log("📦 Sending One-Step Order:", orderPayload);
 
     const token = this.getToken();
     const apiExecutor = token ? customerApi : publicApi;
-
-    console.log("📦 createOrderWithItems - cartItems:", cartItems);
-
-    const itemPromises = cartItems.map(async (item) => {
-      const itemData = {
-        order_id: orderId,
-        menu_item_id: item.id,
-        quantity: Number(item.quantity) || 1,
-        price_at_order: Number(item.price) || 0,
-        notes: item.notes || item.note || "", // Support both notes and note
-        modifiers: item.modifiers,
-      };
-      console.log("📤 Sending item:", itemData);
-      return await apiExecutor.post("/customer/order-items", itemData);
-    });
-
-    await Promise.all(itemPromises);
+    const response = await apiExecutor.post("/customer/orders", orderPayload);
 
     return {
       success: true,
-      message: "Gửi món thành công", // Sửa message theo ý bạn
-      data: {
-        id: orderId,
-        status: "pending", // [QUAN TRỌNG] Phải có cái này để hiện thanh màu vàng
-        totalAmount: totalAmount,
-        table_id: tableId,
-        items: cartItems.map((item) => ({
-          // Map lại items để hiển thị chi tiết
-          ...item,
-          menuItem: { name: item.name }, // Format cho khớp hiển thị
-        })),
-      },
+      message: "Gửi món thành công",
+      data: response.data.data, // Dữ liệu order từ Backend trả về
     };
   }
 
@@ -570,69 +543,41 @@ class CustomerService {
       console.log("📦 addItemsToOrder - cartItems:", cartItems);
 
       // Duyệt qua từng món trong giỏ và gửi lên server
-      const itemPromises = cartItems.map(async (item) => {
-        const itemData = {
-          order_id: orderId,
-          menu_item_id: item.id,
+      const payload = {
+        order_id: orderId,
+        items: cartItems.map((item) => ({
+          menu_item_id: item.id, // Map đúng tên biến Backend cần
           quantity: Number(item.quantity) || 1,
-          price_at_order: Number(item.price) || 0,
-          notes: item.notes || item.note || "", // Support both notes and note
-          modifiers: item.modifiers,
-        };
-        console.log("📤 Sending item:", itemData);
-        // Gọi API Backend: POST /customer/order-items
-        return await apiExecutor.post("/customer/order-items", itemData);
-      });
+          price_at_order: Number(item.price) || 0, // Giá gốc
+          notes: item.notes || item.note || "",
+          // Map modifiers để lấy giá Snapshot
+          modifiers: (item.modifiers || []).map((mod) => ({
+            id: mod.id || mod.optionId,
+            price: Number(mod.price) || Number(mod.price_adjustment) || Number(mod.priceAdjustment) || 0,
+          })),
+        })),
+      };
 
-      // Chờ tất cả các món được gửi xong
-      await Promise.all(itemPromises);
+      console.log("📤 Sending Bulk Items:", payload);
+
+      const response = await apiExecutor.post("/customer/order-items", payload);
 
       return {
         success: true,
         message: "Gọi thêm món thành công",
-        // Trả về data giả lập để MenuPage không bị lỗi undefined
-        // Dữ liệu thật sẽ được Socket cập nhật ngay lập tức sau đó
-        data: {
-          id: orderId,
-          status: "pending", // Quan trọng: Giữ status để thanh Tracking không bị mất
-        },
+        data: response.data.data, // Backend trả về fullOrder
       };
     } catch (error) {
       console.error("Add items error:", error);
 
       const errorCode = error.response?.data?.code;
-      if (['ORDER_NOT_FOUND', 'ORDER_CLOSED', 'ORDER_LOCKED'].includes(errorCode)) {
-         const err = new Error(error.response?.data?.message || "Đơn hàng không hợp lệ");
-         err.shouldCreateNewOrder = true; // Cờ này báo cho MenuPage biết để tạo đơn mới
-         throw err;
+      if (["ORDER_NOT_FOUND", "ORDER_CLOSED", "ORDER_LOCKED"].includes(errorCode)) {
+        const err = new Error(error.response?.data?.message || "Đơn hàng không hợp lệ");
+        err.shouldCreateNewOrder = true;
+        throw err;
       }
 
-      throw new Error(
-        error.response?.data?.message || "Không thể gọi thêm món"
-      );
-    }
-  }
-
-  // [MỚI] Hàm yêu cầu thanh toán
-  async requestPayment(orderId) {
-    try {
-      const token = this.getToken();
-      const apiExecutor = token ? customerApi : publicApi;
-
-      // Gọi API Backend (Bạn cần đảm bảo Backend có route này)
-      const response = await apiExecutor.post(
-        `/customer/orders/${orderId}/request-payment`
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Request payment error:", error);
-      return {
-        success: false,
-        message:
-          error.response?.data?.error ||
-          error.message ||
-          "Không thể gửi yêu cầu thanh toán",
-      };
+      throw new Error(error.response?.data?.message || "Không thể gọi thêm món");
     }
   }
 
@@ -726,7 +671,7 @@ class CustomerService {
     }
   }
 
-  // Yêu cầu thanh toán
+  // // Yêu cầu thanh toán
   async requestPayment(orderId, paymentMethod = "cash") {
     try {
       const response = await publicApi.post(

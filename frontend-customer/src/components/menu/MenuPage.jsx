@@ -173,8 +173,9 @@ const MenuPage = () => {
           preparing: "Đang nấu",
           ready: "Món đã xong",
           served: "Đã phục vụ",
-          payment_request: "Đang thanh toán",
-          payment_pending: "Đang thanh toán"
+          payment_request: "Đang chờ hóa đơn...", // Khách vừa bấm gọi
+          payment_pending: "Vui lòng thanh toán", // Waiter đã lập bill xong
+          completed: "Hoàn tất"
         };
         showToast(
           "info",
@@ -242,13 +243,20 @@ const MenuPage = () => {
 
           // 2. Check xem bàn này có đơn chưa (Active Order)
           try {
+            console.log("🔍 Đang fetch active order cho bàn:", tableId);
             const activeOrderRes =
               await CustomerService.getActiveOrder(tableId);
+            console.log("📦 Active order response:", activeOrderRes);
+            
             if (activeOrderRes.success && activeOrderRes.data) {
+              console.log("✅ Tìm thấy active order:", activeOrderRes.data);
               setActiveOrder(activeOrderRes.data);
+            } else {
+              console.log("⚠️ Không có active order hoặc data null");
             }
           } catch (e) {
-            // Không có đơn active là bình thường
+            // Log lỗi thay vì nuốt im
+            console.error("❌ Lỗi khi fetch active order:", e);
           }
         } else {
           setError(response.message || "Xác thực mã QR thất bại.");
@@ -546,7 +554,7 @@ const MenuPage = () => {
       // Chuẩn bị dữ liệu gửi lên Server
       const cartItems = cart.map((item) => ({
         id: item.id, // menuItemId
-        price: item.unitPrice,
+        price: item.basePrice,
         quantity: item.quantity,
         name: item.name,
         notes: item.note || "",
@@ -608,40 +616,6 @@ const MenuPage = () => {
       });
     } finally {
       setOrderPlacing(false);
-    }
-  };
-
-  const handleRequestBill = async () => {
-    if (!activeOrder) return;
-    
-    // Check nếu đã gọi rồi thì không gọi nữa
-    if (activeOrder.status === 'payment_request') {
-        showToast("warning", "Đã gửi yêu cầu. Vui lòng đợi nhân viên!");
-        return;
-    }
-
-    const confirm = await Swal.fire({
-      title: "Gọi thanh toán?",
-      text: "Nhân viên sẽ xác nhận hóa đơn và gửi lại cho bạn.",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "Gọi ngay",
-      confirmButtonColor: "#16a34a",
-    });
-
-    if (confirm.isConfirmed) {
-      try {
-        // [FIX] Gọi đúng hàm requestPayment trong Service
-        // Lưu ý: customerService.requestPayment cần trỏ đúng vào API /request-payment
-        const res = await CustomerService.requestPayment(activeOrder.id, 'cash'); // Mặc định gửi cash trước để trigger status
-        
-        if(res.success) {
-            setActiveOrder(res.data); // Cập nhật state ngay lập tức
-            Swal.fire("Đã gửi yêu cầu!", "Vui lòng đợi nhân viên xác nhận hóa đơn.", "success");
-        }
-      } catch (err) {
-        Swal.fire("Lỗi", err.message || "Thử lại sau.", "error");
-      }
     }
   };
 

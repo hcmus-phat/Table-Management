@@ -1,8 +1,8 @@
 import express from "express";
 import {
-    createOrder,
     getMyOrders,
-    getOrderById
+    getOrderById,
+    createOrder
 } from "../../controllers/customer/orderHistory.controller.js"
 import authCustomer from "../../middlewares/authCustomer.middleware.js";
 

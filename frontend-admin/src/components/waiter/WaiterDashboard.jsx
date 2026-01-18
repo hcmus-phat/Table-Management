@@ -61,7 +61,7 @@ const WaiterDashboard = () => {
     fetchOrders();
 
     socketRef.current = io(SOCKET_URL);
-    
+
     // Nghe sự kiện đơn mới
     socketRef.current.on("new_order_created", (updatedOrder) => {
       playNotificationSound();
@@ -76,7 +76,7 @@ const WaiterDashboard = () => {
     // Nghe sự kiện update chung
     socketRef.current.on("order_status_updated", (updatedOrder) => {
       setOrders((prev) =>
-        prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o))
+        prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)),
       );
     });
 
@@ -100,33 +100,33 @@ const WaiterDashboard = () => {
   // A. Update trạng thái (Duyệt/Bưng) - Logic cũ
   const handleUpdateStatus = async (orderId, status) => {
     const token = localStorage.getItem("token");
-    
+
     // Optimistic UI
     setOrders((prev) =>
       prev.map((o) => {
         if (String(o.id) === String(orderId)) {
           if (status === "confirmed") {
             const updatedItems = o.items.map((i) =>
-              i.status === "pending" ? { ...i, status: "confirmed" } : i
+              i.status === "pending" ? { ...i, status: "confirmed" } : i,
             );
             return { ...o, status: "confirmed", items: updatedItems };
           } else if (status === "served") {
             const updatedItems = o.items.map((i) =>
-              i.status === "ready" ? { ...i, status: "served" } : i
+              i.status === "ready" ? { ...i, status: "served" } : i,
             );
             return { ...o, items: updatedItems }; // Status order có thể chưa đổi nếu chưa hết món
           }
           return { ...o, status: status };
         }
         return o;
-      })
+      }),
     );
 
     try {
       await axios.put(
         `${API_URL}/admin/orders/${orderId}/status`,
         { status },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
     } catch (err) {
       console.error(err);
@@ -136,7 +136,9 @@ const WaiterDashboard = () => {
 
   // B. Hủy món lẻ
   const handleRejectItem = async (orderId, itemId) => {
-    const reason = window.prompt("Lý do hủy món này? (VD: Hết hàng, Khách đổi ý)");
+    const reason = window.prompt(
+      "Lý do hủy món này? (VD: Hết hàng, Khách đổi ý)",
+    );
     if (reason === null) return;
 
     const token = localStorage.getItem("token");
@@ -146,19 +148,19 @@ const WaiterDashboard = () => {
           const updatedItems = o.items.map((i) =>
             String(i.id) === String(itemId)
               ? { ...i, status: "cancelled", reject_reason: reason }
-              : i
+              : i,
           );
           return { ...o, items: updatedItems };
         }
         return o;
-      })
+      }),
     );
 
     try {
       await axios.put(
         `${API_URL}/admin/orders/items/${itemId}/reject`,
         { reason },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
     } catch (err) {
       alert("Lỗi: " + err.message);
@@ -180,7 +182,7 @@ const WaiterDashboard = () => {
       await axios.put(
         `${API_URL}/admin/orders/${orderId}/confirm-bill`,
         billData,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       setIsBillModalOpen(false);
       // alert("Đã gửi hóa đơn cho khách!"); // Có thể bỏ alert cho mượt
@@ -192,16 +194,19 @@ const WaiterDashboard = () => {
   // Bước 3: Xác nhận Thu tiền mặt (Khi status = payment_pending)
   const handleConfirmCashPayment = async (orderId) => {
     if (!window.confirm("Xác nhận đã thu đủ tiền mặt từ khách?")) return;
-    
+
     const token = localStorage.getItem("token");
     try {
       await axios.put(
         `${API_URL}/admin/orders/${orderId}/pay`,
         { payment_method: "cash" },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       // Ẩn đơn hàng sau 1s
-      setTimeout(() => setOrders((prev) => prev.filter((o) => o.id !== orderId)), 1000);
+      setTimeout(
+        () => setOrders((prev) => prev.filter((o) => o.id !== orderId)),
+        1000,
+      );
     } catch (err) {
       alert("Lỗi: " + err.message);
     }
@@ -231,7 +236,9 @@ const WaiterDashboard = () => {
       );
     if (filter === "payment")
       // Hiện cả 2 trạng thái thanh toán
-      return order.status === "payment_request" || order.status === "payment_pending";
+      return (
+        order.status === "payment_request" || order.status === "payment_pending"
+      );
     return order.status === filter;
   });
 
@@ -245,9 +252,14 @@ const WaiterDashboard = () => {
             <Utensils size={24} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Waiter Dashboard</h1>
+            <h1 className="text-2xl font-bold text-gray-800">
+              Waiter Dashboard
+            </h1>
             <p className="text-gray-500 text-sm">
-              {currentTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+              {currentTime.toLocaleTimeString("vi-VN", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </p>
           </div>
         </div>
@@ -263,7 +275,11 @@ const WaiterDashboard = () => {
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
-                {f === "all" ? "Tất cả" : f === "pending" ? "Cần duyệt" : "Thanh toán"}
+                {f === "all"
+                  ? "Tất cả"
+                  : f === "pending"
+                    ? "Cần duyệt"
+                    : "Thanh toán"}
               </button>
             ))}
           </div>
@@ -281,9 +297,11 @@ const WaiterDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredOrders.map((order) => {
           const orderId = order.id;
-          const pendingItems = order.items?.filter((i) => i.status === "pending") || [];
-          const readyItems = order.items?.filter((i) => i.status === "ready") || [];
-          
+          const pendingItems =
+            order.items?.filter((i) => i.status === "pending") || [];
+          const readyItems =
+            order.items?.filter((i) => i.status === "ready") || [];
+
           // Check Status Mới
           const isPaymentRequest = order.status === "payment_request";
           const isPaymentPending = order.status === "payment_pending";
@@ -292,11 +310,18 @@ const WaiterDashboard = () => {
 
           // Border color logic
           let borderClass = "border-gray-200";
-          if (isPaymentRequest) borderClass = "border-purple-500 border-2 shadow-purple-100 ring-2 ring-purple-100";
-          else if (isPaymentPending) borderClass = "border-orange-500 border-2 shadow-orange-100";
-          else if (hasNewRequest) borderClass = "border-red-500 border-2 shadow-red-100 ring-2 ring-red-100";
-          else if (hasReadyToServe) borderClass = "border-green-500 border-2 shadow-green-100";
-          else if (order.status === "pending") borderClass = "border-yellow-500 border-l-4";
+          if (isPaymentRequest)
+            borderClass =
+              "border-purple-500 border-2 shadow-purple-100 ring-2 ring-purple-100";
+          else if (isPaymentPending)
+            borderClass = "border-orange-500 border-2 shadow-orange-100";
+          else if (hasNewRequest)
+            borderClass =
+              "border-red-500 border-2 shadow-red-100 ring-2 ring-red-100";
+          else if (hasReadyToServe)
+            borderClass = "border-green-500 border-2 shadow-green-100";
+          else if (order.status === "pending")
+            borderClass = "border-yellow-500 border-l-4";
 
           return (
             <div
@@ -306,10 +331,15 @@ const WaiterDashboard = () => {
               {/* CARD HEADER */}
               <div
                 className={`p-3 flex justify-between items-center ${
-                  isPaymentRequest ? "bg-purple-50" : 
-                  isPaymentPending ? "bg-orange-50" :
-                  hasNewRequest ? "bg-red-50" : 
-                  hasReadyToServe ? "bg-green-50" : "bg-gray-50"
+                  isPaymentRequest
+                    ? "bg-purple-50"
+                    : isPaymentPending
+                      ? "bg-orange-50"
+                      : hasNewRequest
+                        ? "bg-red-50"
+                        : hasReadyToServe
+                          ? "bg-green-50"
+                          : "bg-gray-50"
                 }`}
               >
                 <div className="flex flex-col">
@@ -317,52 +347,123 @@ const WaiterDashboard = () => {
                     Bàn {order.table?.table_number || "Unknown"}
                   </h3>
                   <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                    <Clock size={10} /> {getMinutesWaiting(order.created_at)} phút
+                    <Clock size={10} /> {getMinutesWaiting(order.created_at)}{" "}
+                    phút
                   </span>
                 </div>
-                
+
                 {/* Badges */}
-                {hasNewRequest && <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-full animate-pulse flex gap-1"><Bell size={10}/> MỚI</span>}
-                {!hasNewRequest && hasReadyToServe && <span className="bg-green-600 text-white text-[10px] font-bold px-2 py-1 rounded-full animate-bounce flex gap-1"><CheckCircle size={10}/> XONG</span>}
-                {isPaymentRequest && <span className="bg-purple-600 text-white text-[10px] font-bold px-2 py-1 rounded animate-pulse">CẦN T.TOÁN</span>}
-                {isPaymentPending && <span className="bg-orange-600 text-white text-[10px] font-bold px-2 py-1 rounded">CHỜ THU TIỀN</span>}
+                {hasNewRequest && (
+                  <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-full animate-pulse flex gap-1">
+                    <Bell size={10} /> MỚI
+                  </span>
+                )}
+                {!hasNewRequest && hasReadyToServe && (
+                  <span className="bg-green-600 text-white text-[10px] font-bold px-2 py-1 rounded-full animate-bounce flex gap-1">
+                    <CheckCircle size={10} /> XONG
+                  </span>
+                )}
+                {isPaymentRequest && (
+                  <span className="bg-purple-600 text-white text-[10px] font-bold px-2 py-1 rounded animate-pulse">
+                    CẦN T.TOÁN
+                  </span>
+                )}
+                {isPaymentPending && (
+                  <span className="bg-orange-600 text-white text-[10px] font-bold px-2 py-1 rounded">
+                    CHỜ THU TIỀN
+                  </span>
+                )}
               </div>
 
               {/* CARD BODY (LIST MÓN) */}
               <div className="p-4 space-y-4 max-h-80 overflow-y-auto flex-1">
                 {/* Phần Render món giữ nguyên như code cũ của bạn vì nó tốt rồi */}
                 {pendingItems.length > 0 && (
-                   <div className="bg-red-50 border border-red-100 rounded-lg p-2">
-                     <p className="text-[10px] text-red-600 font-bold mb-2 uppercase border-b border-red-200 pb-1">Cần xác nhận ({pendingItems.length})</p>
-                     {pendingItems.map((item, idx) => (
-                       <div key={idx} className="mb-2 last:mb-0 flex justify-between items-start border-b border-red-100 pb-2 last:border-0 last:pb-0">
-                         <div>
-                            <span className="font-bold text-gray-900 text-sm">{item.quantity}x {item.menu_item?.name}</span>
-                            {item.modifiers?.length > 0 && <span className="text-[10px] text-gray-500 italic pl-1"> + {item.modifiers.map(m=>m.modifier_option?.name).join(', ')}</span>}
-                            {item.notes && <span className="text-[10px] text-orange-600 pl-1"> "{item.notes}"</span>}
-                         </div>
-                         <button onClick={() => handleRejectItem(orderId, item.id)} className="text-red-400 hover:text-red-700 p-1"><Trash2 size={16}/></button>
-                       </div>
-                     ))}
-                   </div>
+                  <div className="bg-red-50 border border-red-100 rounded-lg p-2">
+                    <p className="text-[10px] text-red-600 font-bold mb-2 uppercase border-b border-red-200 pb-1">
+                      Cần xác nhận ({pendingItems.length})
+                    </p>
+                    {pendingItems.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="mb-2 last:mb-0 flex justify-between items-start border-b border-red-100 pb-2 last:border-0 last:pb-0"
+                      >
+                        <div>
+                          <span className="font-bold text-gray-900 text-sm">
+                            {item.quantity}x {item.menu_item?.name}
+                          </span>
+                          {item.modifiers?.length > 0 && (
+                            <span className="text-[10px] text-gray-500 italic pl-1">
+                              {" "}
+                              +{" "}
+                              {item.modifiers
+                                .map((m) => m.modifier_option?.name)
+                                .join(", ")}
+                            </span>
+                          )}
+                          {item.notes && (
+                            <span className="text-[10px] text-orange-600 pl-1">
+                              {" "}
+                              "{item.notes}"
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleRejectItem(orderId, item.id)}
+                          className="text-red-400 hover:text-red-700 p-1"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 )}
 
                 {/* List món đang phục vụ */}
-                {(order.items?.filter(i => i.status !== 'pending').length > 0) && (
+                {order.items?.filter((i) => i.status !== "pending").length >
+                  0 && (
                   <div className="mt-2">
-                     {order.items.filter(i => i.status !== 'pending').map((item, idx) => (
-                        <div key={idx} className={`flex justify-between items-center mb-2 pb-1 border-b border-gray-50 last:border-0 ${item.status === 'cancelled' ? 'opacity-50' : ''}`}>
-                            <div className="flex flex-col">
-                                <span className={`text-sm font-medium ${item.status === 'cancelled' ? 'line-through' : ''}`}>
-                                    {item.quantity}x {item.menu_item?.name}
+                    {order.items
+                      .filter((i) => i.status !== "pending")
+                      .map((item, idx) => (
+                        <div
+                          key={idx}
+                          className={`flex justify-between items-center mb-2 pb-1 border-b border-gray-50 last:border-0 ${item.status === "cancelled" ? "opacity-50" : ""}`}
+                        >
+                          <div className="flex flex-col">
+                            <span
+                              className={`text-sm font-medium ${item.status === "cancelled" ? "line-through" : ""}`}
+                            >
+                              {item.quantity}x {item.menu_item?.name}
+                            </span>
+
+                            {item.modifiers?.length > 0 && (
+                              <span className="text-[10px] text-gray-500 italic pl-1">
+                                +{" "}
+                                {item.modifiers
+                                  .map((m) => m.modifier_option?.name)
+                                  .join(", ")}
+                              </span>
+                            )}
+
+                            {item.notes && (
+                              <span className="text-[10px] text-orange-600 pl-1 font-medium">
+                                📝 "{item.notes}"
+                              </span>
+                            )}
+                            <div className="flex flex-wrap gap-1">
+                              <span className="text-[9px] bg-gray-100 px-1 rounded text-gray-500">
+                                {item.status}
+                              </span>
+                              {item.status === "cancelled" && (
+                                <span className="text-[9px] text-red-500">
+                                  {item.reject_reason}t
                                 </span>
-                                <div className="flex flex-wrap gap-1">
-                                    <span className="text-[9px] bg-gray-100 px-1 rounded text-gray-500">{item.status}</span>
-                                    {item.status === 'cancelled' && <span className="text-[9px] text-red-500">{item.reject_reason}</span>}
-                                </div>
+                              )}
                             </div>
+                          </div>
                         </div>
-                     ))}
+                      ))}
                   </div>
                 )}
               </div>
@@ -371,7 +472,9 @@ const WaiterDashboard = () => {
               <div className="p-3 bg-gray-50 border-t border-gray-100 mt-auto">
                 <div className="flex justify-between items-center mb-3">
                   <span className="text-gray-500 text-xs">Tổng tạm tính</span>
-                  <span className="text-lg font-bold text-gray-900">{formatCurrency(order.total_amount)}</span>
+                  <span className="text-lg font-bold text-gray-900">
+                    {formatCurrency(order.total_amount)}
+                  </span>
                 </div>
 
                 {/* LOGIC HIỂN THỊ NÚT */}
@@ -380,7 +483,8 @@ const WaiterDashboard = () => {
                     onClick={() => handleUpdateStatus(orderId, "confirmed")}
                     className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg shadow-md transition-all active:scale-95 flex justify-center items-center gap-2"
                   >
-                    <CheckCircle size={16} /> Duyệt {pendingItems.length} món mới
+                    <CheckCircle size={16} /> Duyệt {pendingItems.length} món
+                    mới
                   </button>
                 ) : hasReadyToServe ? (
                   <button
@@ -390,26 +494,30 @@ const WaiterDashboard = () => {
                     <Utensils size={16} /> Bưng {readyItems.length} món xong
                   </button>
                 ) : isPaymentRequest ? (
-                   // NÚT LẬP HÓA ĐƠN (Cho bước 1)
-                   <button
+                  // NÚT LẬP HÓA ĐƠN (Cho bước 1)
+                  <button
                     onClick={() => handleOpenBillModal(order)}
                     className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-lg shadow-md transition-all active:scale-95 flex justify-center items-center gap-2 animate-bounce-slow"
-                   >
-                     <DollarSign size={16} /> Lập Hóa Đơn
-                   </button>
+                  >
+                    <DollarSign size={16} /> Lập Hóa Đơn
+                  </button>
                 ) : isPaymentPending ? (
-                   // NÚT THU TIỀN MẶT (Cho bước 2)
-                   <div className="space-y-2">
-                       <div className="text-center text-xs text-orange-600 font-bold bg-orange-100 p-1 rounded">Đang chờ khách trả tiền...</div>
-                       <button
-                        onClick={() => handleConfirmCashPayment(orderId)}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow-md transition-all active:scale-95 flex justify-center items-center gap-2"
-                       >
-                         <CreditCard size={16} /> Khách trả Tiền Mặt
-                       </button>
-                   </div>
+                  // NÚT THU TIỀN MẶT (Cho bước 2)
+                  <div className="space-y-2">
+                    <div className="text-center text-xs text-orange-600 font-bold bg-orange-100 p-1 rounded">
+                      Đang chờ khách trả tiền...
+                    </div>
+                    <button
+                      onClick={() => handleConfirmCashPayment(orderId)}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow-md transition-all active:scale-95 flex justify-center items-center gap-2"
+                    >
+                      <CreditCard size={16} /> Khách trả Tiền Mặt
+                    </button>
+                  </div>
                 ) : (
-                  <span className="text-center block text-xs text-gray-400">Đang phục vụ...</span>
+                  <span className="text-center block text-xs text-gray-400">
+                    Đang phục vụ...
+                  </span>
                 )}
               </div>
             </div>
@@ -425,7 +533,7 @@ const WaiterDashboard = () => {
       )}
 
       {/* MODAL TÍNH TIỀN */}
-      <BillConfirmModal 
+      <BillConfirmModal
         isOpen={isBillModalOpen}
         onClose={() => setIsBillModalOpen(false)}
         order={selectedOrderForBill}

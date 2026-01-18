@@ -2,7 +2,7 @@
 import express from 'express';
 import {
   getOrderItemsByOrderId,
-  createOrderItem
+  createOrderItems
 } from '../../controllers/customer/orderItem.controller.js';
 import {
   validateCreateOrderItem,
@@ -20,7 +20,7 @@ router.get(
 router.post(
   '/',
   validateCreateOrderItem,
-  createOrderItem
+  createOrderItems
 );
 
 export default router;
