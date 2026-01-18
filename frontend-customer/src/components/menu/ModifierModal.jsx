@@ -138,7 +138,7 @@ const ModifierModalContent = ({ item, onClose, onAddToCart }) => {
 								</p>
 							)}
 							<p className="text-lg font-semibold text-blue-600 mt-2">
-								${parseFloat(item.price || 0).toFixed(2)}
+								{parseFloat(item.price || 0).toLocaleString('vi-VN')} đ
 							</p>
 						</div>
 						<button
@@ -235,10 +235,7 @@ const ModifierModalContent = ({ item, onClose, onAddToCart }) => {
 													option.price_adjustment
 												) > 0 && (
 													<span className="text-gray-600 font-medium">
-														+$
-														{parseFloat(
-															option.price_adjustment
-														).toFixed(2)}
+														+ {parseFloat(option.price_adjustment).toLocaleString('vi-VN')} đ
 													</span>
 												)}
 											</label>

@@ -100,6 +100,7 @@ function App() {
             <Route path="/admin/menu/items" element={<MenuItemList />} />
             <Route path="/admin/menu/items/new" element={<MenuItemForm />} />
             <Route path="/admin/menu/items/:id" element={<MenuItemForm />} />
+            
             <Route
               path="/admin/menu/modifiers"
               element={<ModifierGroupList />}

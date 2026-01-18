@@ -26,11 +26,16 @@ export const createOrderItem = async (req, res) => {
         }
 
         // ✅ 3. KIỂM TRA ORDER ĐÃ HOÀN TẤT/HỦY CHƯA
-        if (['completed', 'cancelled'].includes(existingOrder.status)) {
+        if (['completed', 'cancelled', 'payment_request', 'payment_pending'].includes(existingOrder.status)) {
+            let msg = 'Đơn hàng đã đóng.';
+            if (existingOrder.status === 'completed') msg = 'Đơn hàng đã hoàn tất.';
+            if (existingOrder.status === 'cancelled') msg = 'Đơn hàng đã bị hủy.';
+            if (existingOrder.status.includes('payment')) msg = 'Đơn hàng đang trong quá trình thanh toán. Không thể gọi thêm món lúc này.';
+
             return res.status(400).json({
                 success: false,
-                message: `Order đã ${existingOrder.status === 'completed' ? 'hoàn tất' : 'bị hủy'}. Không thể thêm món.`,
-                code: 'ORDER_CLOSED'
+                message: msg,
+                code: 'ORDER_LOCKED'
             });
         }
 

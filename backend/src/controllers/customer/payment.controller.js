@@ -34,8 +34,8 @@ export const requestPayment = async (req, res) => {
       });
     }
 
-    // 2. Kiểm tra trạng thái đơn
-    if (order.status === "payment" || order.status === "completed") {
+    // [UPDATE] Thêm check cho các trạng thái mới
+    if (["payment_request", "payment_pending", "completed"].includes(order.status)) {
       return res.status(400).json({
         success: false,
         error: "Đơn hàng đã được yêu cầu thanh toán hoặc đã hoàn tất",
@@ -72,8 +72,8 @@ export const requestPayment = async (req, res) => {
     }
 
     // 4. Cập nhật trạng thái đơn sang 'payment'
-    order.status = "payment";
-    order.payment_method = payment_method;
+    order.status = "payment_request";
+    // order.payment_method = payment_method;
     await order.save();
 
     // 5. Reload để lấy data đầy đủ
@@ -141,10 +141,10 @@ export const completePayment = async (req, res) => {
       });
     }
 
-    if (order.status !== "payment") {
+    if (order.status !== "payment_pending") {
       return res.status(400).json({
         success: false,
-        error: "Đơn hàng chưa ở trạng thái chờ thanh toán",
+        error: "Đơn hàng chưa được nhân viên xác nhận hóa đơn.",
       });
     }
 
@@ -201,7 +201,7 @@ export const vnpayCallback = async (req, res) => {
     if (status === "success") {
       // Gọi completePayment
       const order = await Order.findByPk(orderId);
-      if (order && order.status === "payment") {
+      if (order && order.status === "payment_pending") {
         order.status = "completed";
         order.transaction_id = transactionId || `VNPAY_${Date.now()}`;
         order.completed_at = new Date();
@@ -245,7 +245,7 @@ export const vnpayCallback = async (req, res) => {
 export const momoPayment = async (req, res) => {
   try {
     //https://developers.momo.vn/#/docs/en/aiov2/?id=payment-method
-    const { orderId: customerOrderId, amount: customerAmount } = req.body;
+    const { orderId: customerOrderId } = req.body;
 
     // Validate input
     if (!customerOrderId) {
@@ -264,6 +264,13 @@ export const momoPayment = async (req, res) => {
       });
     }
 
+    if (order.status !== 'payment_pending') {
+        return res.status(400).json({ 
+            success: false, 
+            error: "Vui lòng đợi nhân viên xác nhận hóa đơn (Discount/Thuế) trước khi thanh toán." 
+        });
+    }
+
     //parameters
     var accessKey = process.env.MOMO_ACCESS_KEY;
     var secretKey = process.env.MOMO_SECRET_KEY;
@@ -280,8 +287,9 @@ export const momoPayment = async (req, res) => {
       "https://dashing-brenda-annalistically.ngrok-free.dev/api/customer/payment/callback";
 
     var requestType = "payWithMethod";
+
     // Sử dụng amount từ request hoặc từ order - MoMo yêu cầu số nguyên (VND không có số thập phân)
-    var rawAmount = customerAmount || order.total_amount || 50000;
+    var rawAmount = order.total_amount;
     var amount = String(Math.round(Number(rawAmount)));
 
     // MoMo test environment yêu cầu amount tối thiểu 1000 và tối đa 50,000,000
@@ -432,7 +440,7 @@ export const momoCallback = async (req, res) => {
         ],
       });
 
-      if (order && order.status === "payment") {
+      if (order && order.status === "payment_pending") {
         order.status = "completed";
         order.transaction_id = transId || momoOrderId;
         order.payment_method = "momo";

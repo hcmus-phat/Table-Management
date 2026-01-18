@@ -183,17 +183,8 @@ export const updateOrderStatus = async (req, res) => {
             );
             finalOrderStatus = 'cancelled';
         }
-        
-        // CASE E: THANH TOÁN (Payment/Completed)
-        else if (status === 'payment') {
-            // Chỉ đổi trạng thái để hiện thông báo cho Waiter
-            // KHÔNG cập nhật completed_at
-            finalOrderStatus = status;
-        } 
-        // Trường hợp 2: Waiter xác nhận thu tiền HOẶC Cổng thanh toán báo thành công
-        else if (status === 'completed') {
-            order.completed_at = new Date(); // Lúc này mới chốt thời gian thực tế
-            finalOrderStatus = status;
+        else if (status === 'payment_request') {
+             finalOrderStatus = 'payment_request';
         }
 
         // 3. LƯU TRẠNG THÁI ORDER (VỎ)
@@ -224,6 +215,113 @@ export const updateOrderStatus = async (req, res) => {
     } catch (error) {
         console.error('Update Order Error:', error);
         return res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+};
+
+export const confirmBill = async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { discount_type, discount_value, tax_amount, note } = req.body;
+
+        const order = await Order.findByPk(orderId);
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+        // 1. TÍNH LẠI SUBTOTAL (Để đảm bảo chính xác tuyệt đối từ Server)
+        const items = await OrderItem.findAll({ 
+            where: { order_id: orderId, status: { [Op.not]: 'cancelled' } },
+            include: [
+                { model: MenuItem, as: 'menu_item', attributes: ['price'] },
+                { model: OrderItemModifier, as: 'modifiers', include: [{model: ModifierOption, as: 'modifier_option', attributes: ['price_adjustment']}] }
+            ]
+        });
+        
+        let calculatedSubtotal = 0;
+        items.forEach(item => {
+            let itemPrice = parseFloat(item.menu_item?.price || 0);
+            // Cộng tiền Topping/Modifier
+            if(item.modifiers && item.modifiers.length > 0) {
+                item.modifiers.forEach(mod => {
+                    itemPrice += parseFloat(mod.modifier_option?.price_adjustment || 0);
+                });
+            }
+            calculatedSubtotal += (itemPrice * item.quantity);
+        });
+
+        // 2. Áp dụng Giảm giá
+        let discountAmount = 0;
+        const dValue = parseFloat(discount_value || 0);
+        
+        if (discount_type === 'percent') {
+            discountAmount = (calculatedSubtotal * dValue) / 100;
+        } else if (discount_type === 'fixed') {
+            discountAmount = dValue;
+        }
+
+        // 3. Tính Tổng cuối
+        const tax = parseFloat(tax_amount || 0);
+        const finalTotal = calculatedSubtotal + tax - discountAmount;
+
+        // 4. Update DB & Chuyển trạng thái sang 'payment_pending'
+        order.subtotal = calculatedSubtotal;
+        order.discount_type = discount_type;
+        order.discount_value = dValue;
+        order.tax_amount = tax;
+        order.total_amount = finalTotal > 0 ? finalTotal : 0;
+        order.note = note;
+        order.status = 'payment_pending'; 
+        
+        await order.save();
+
+        // 5. Socket thông báo
+        if (req.io) {
+            const fullOrder = await Order.findByPk(orderId, {
+                include: [{ model: Table, as: 'table' }, { model: OrderItem, as: 'items' }]
+            });
+            
+            req.io.emit('order_status_updated', fullOrder);
+            // Bắn event riêng để App khách hiện nút thanh toán
+            req.io.emit(`bill_confirmed_table_${order.table_id}`, fullOrder);
+        }
+
+        return res.json({ success: true, message: 'Đã gửi hóa đơn cho khách', data: order });
+
+    } catch (error) {
+        console.error("Confirm Bill Error:", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const markAsPaid = async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { payment_method } = req.body; 
+
+        const order = await Order.findByPk(orderId);
+        if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+        // 1. Cập nhật Order
+        order.status = 'completed';
+        order.payment_method = payment_method || 'cash';
+        order.completed_at = new Date();
+        await order.save();
+
+        // 2. Giải phóng bàn
+        if (order.table_id) {
+            await Table.update({ status: 'available' }, { where: { id: order.table_id } });
+        }
+
+        // 3. Socket thông báo
+        if (req.io) {
+            req.io.emit('order_status_updated', order);
+            req.io.emit('table_status_updated', { tableId: order.table_id, status: 'available' });
+            req.io.emit(`payment_success_table_${order.table_id}`, { orderId });
+        }
+
+        return res.json({ success: true, message: 'Thanh toán thành công' });
+
+    } catch (error) {
+        console.error("Mark Paid Error:", error);
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 

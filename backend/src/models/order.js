@@ -29,14 +29,47 @@ Order.init(
         key: "id",
       },
     },
+    // Tổng tiền món (Chưa tính thuế, chưa giảm giá)
+    subtotal: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0,
+      validate: { min: 0 },
+    },
 
+    // Tiền thuế (VAT...)
+    tax_amount: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0,
+      validate: { min: 0 },
+    },
+
+    // Loại giảm giá (Phần trăm hoặc Số tiền cố định)
+    discount_type: {
+      type: DataTypes.ENUM('percent', 'fixed'),
+      allowNull: true, 
+    },
+
+    // Giá trị giảm (Ví dụ: 10 (nếu là %), hoặc 50000 (nếu là fixed))
+    discount_value: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      defaultValue: 0,
+    },
+
+    // Ghi chú hóa đơn (VD: Voucher sinh nhật, Khách quen...)
+    note: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+
+    // Tổng tiền cuối cùng khách phải trả (= Subtotal + Tax - Discount)
     total_amount: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       defaultValue: 0,
-      validate: {
-        min: 0,
-      },
+      validate: { min: 0 },
     },
 
     // --- SỬA LẠI ĐOẠN NÀY (Chỉ giữ 1 cái status duy nhất) ---
@@ -47,7 +80,8 @@ Order.init(
         "preparing",  // Bếp đang nấu
         "ready",      // Bếp nấu xong
         "served",     // Đã mang ra bàn
-        "payment",    // Khách gọi thanh toán
+        "payment_request",  // 1. Khách bấm gọi thanh toán (Waiter nhận thông báo)
+        "payment_pending",
         "completed",  // Đã thanh toán xong
         "cancelled"   // Đã hủy
       ),
@@ -95,6 +129,9 @@ Order.init(
       },
       {
         fields: ["ordered_at"],
+      },
+      { 
+        fields: ["status"] 
       },
     ],
   }

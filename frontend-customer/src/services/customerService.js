@@ -600,17 +600,11 @@ class CustomerService {
     } catch (error) {
       console.error("Add items error:", error);
 
-      // ✅ XỬ LÝ KHI ORDER KHÔNG TỒN TẠI
-      if (
-        error.response?.data?.code === "ORDER_NOT_FOUND" ||
-        error.response?.data?.code === "ORDER_CLOSED"
-      ) {
-        // Throw error với flag đặc biệt để MenuPage biết phải tạo đơn mới
-        const err = new Error(
-          error.response.data.message || "Đơn hàng không hợp lệ"
-        );
-        err.shouldCreateNewOrder = true;
-        throw err;
+      const errorCode = error.response?.data?.code;
+      if (['ORDER_NOT_FOUND', 'ORDER_CLOSED', 'ORDER_LOCKED'].includes(errorCode)) {
+         const err = new Error(error.response?.data?.message || "Đơn hàng không hợp lệ");
+         err.shouldCreateNewOrder = true; // Cờ này báo cho MenuPage biết để tạo đơn mới
+         throw err;
       }
 
       throw new Error(
@@ -775,8 +769,7 @@ class CustomerService {
   async createMomoPayment(orderId, amount) {
     try {
       const response = await publicApi.post("/customer/payment/momo-callback", {
-        orderId,
-        amount: amount.toString(),
+        orderId
       });
       return response.data;
     } catch (error) {

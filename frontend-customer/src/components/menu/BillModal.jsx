@@ -6,26 +6,28 @@ import {
   CheckCircle,
   AlertCircle,
   Loader,
+  Clock,
+  Banknote
 } from "lucide-react";
-import Swal from "sweetalert2"; // Import Swal
+import Swal from "sweetalert2";
 import CustomerService from "../../services/customerService";
 
 const BillModal = ({ isOpen, onClose, order, onRequestPayment }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("cash");
 
-  // --- 1. CONFIG: Sửa lỗi Tailwind bằng cách khai báo full class ---
+  // --- 1. CONFIG PAYMENT METHODS ---
   const paymentMethods = [
     {
       id: "cash",
       name: "Tiền mặt",
-      icon: "💵",
+      icon: <Banknote size={24} />,
       activeClass: "border-green-500 bg-green-50 text-green-700",
     },
     {
       id: "momo",
       name: "MoMo",
-      icon: "🟣",
+      icon: "🟣", // Hoặc icon SVG
       activeClass: "border-pink-500 bg-pink-50 text-pink-700",
     },
     {
@@ -34,26 +36,15 @@ const BillModal = ({ isOpen, onClose, order, onRequestPayment }) => {
       icon: "🔵",
       activeClass: "border-blue-500 bg-blue-50 text-blue-700",
     },
-    {
-      id: "zalopay",
-      name: "ZaloPay",
-      icon: "🔷",
-      activeClass: "border-cyan-500 bg-cyan-50 text-cyan-700",
-    },
-    {
-      id: "stripe",
-      name: "Stripe",
-      icon: "💳",
-      activeClass: "border-indigo-500 bg-indigo-50 text-indigo-700",
-    },
   ];
 
-  const getPaymentMethodName = (methodId) => {
-    const method = paymentMethods.find((p) => p.id === methodId);
-    return method ? method.name : methodId;
-  };
 
-  // --- 2. LOGIC KIỂM TRA MÓN ---
+  // --- 2. LOGIC TRẠNG THÁI (QUAN TRỌNG) ---
+  const isPendingStaff = order?.status === 'payment_request'; // Đang chờ Waiter confirm
+  const isReadyToPay = order?.status === 'payment_pending';   // Waiter đã chốt, chờ Khách trả
+  const isPaid = order?.status === 'completed';
+
+  // Kiểm tra món đã lên hết chưa
   const allItemsServed = useMemo(() => {
     if (!order) return false;
     const items = order.items || [];
@@ -63,7 +54,6 @@ const BillModal = ({ isOpen, onClose, order, onRequestPayment }) => {
     return activeItems.every((i) => i.status === "served");
   }, [order]);
 
-  // Early return
   if (!isOpen || !order) return null;
 
   // --- 3. FORMATTER ---
@@ -77,314 +67,195 @@ const BillModal = ({ isOpen, onClose, order, onRequestPayment }) => {
   const formatDateTime = (dateString) => {
     if (!dateString) return "N/A";
     return new Date(dateString).toLocaleString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
     });
   };
 
-  // --- 4. HANDLERS ---
-
-  // Xử lý thanh toán Online (MoMo thật + Mock các cái khác)
-  const handleOnlinePayment = async (method, orderId, amount) => {
-    // A. MOMO THẬT
-    if (method === "momo") {
-      try {
-        // Hiện loading đẹp
-        Swal.fire({
-          title: "Đang kết nối MoMo...",
-          text: "Vui lòng đợi giây lát",
-          allowOutsideClick: false,
-          didOpen: () => Swal.showLoading(),
-        });
-
-        const response = await CustomerService.createMomoPayment(
-          orderId,
-          amount
-        );
-
-        if (response && response.payUrl) {
-          // Redirect
-          window.location.href = response.payUrl;
-        } else if (response && response.resultCode === 0) {
-          Swal.fire("Thành công", "Thanh toán MoMo thành công!", "success");
-          onClose();
-        } else {
-          throw new Error(response?.message || "Không thể tạo thanh toán MoMo");
-        }
-      } catch (error) {
-        console.error("MoMo payment error:", error);
-        Swal.fire({
-          icon: "error",
-          title: "Lỗi MoMo",
-          text: error.message || "Vui lòng thử lại",
-        });
-      }
-      return;
-    }
-
-    // B. CÁC CỔNG KHÁC (MOCK - Giả lập không dùng localhost)
-    Swal.fire({
-      title: `Đang chuyển đến ${getPaymentMethodName(method)}...`,
-      text: "(MOCK: Giả lập thanh toán thành công sau 2s)",
-      allowOutsideClick: false,
-      didOpen: () => Swal.showLoading(),
-    });
-
-    setTimeout(async () => {
-      try {
-        await CustomerService.completePayment(
-          orderId,
-          `${method.toUpperCase()}_${Date.now()}`,
-          method
-        );
-        Swal.fire({
-          icon: "success",
-          title: "Thanh toán thành công!",
-          timer: 1500,
-          showConfirmButton: false,
-        });
-        onClose();
-      } catch (err) {
-        Swal.fire("Lỗi", "Hoàn tất thanh toán thất bại", "error");
-      }
-    }, 2000);
-  };
-
-  const handlePaymentRequest = async () => {
-    if (!allItemsServed) {
-      Swal.fire({
-        icon: "warning",
-        title: "Chưa thể thanh toán",
-        text: "Vui lòng đợi tất cả món được phục vụ (Trạng thái: Served)!",
-        confirmButtonColor: "#ea580c",
-      });
-      return;
-    }
-
-    // Xác nhận bằng Swal
-    const result = await Swal.fire({
-      title: "Xác nhận thanh toán?",
-      text: `Tổng tiền: ${formatCurrency(
-        order.total_amount
-      )} - Qua: ${getPaymentMethodName(selectedPaymentMethod)}`,
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "Thanh toán ngay",
-      cancelButtonText: "Hủy",
-      confirmButtonColor: "#16a34a",
-      cancelButtonColor: "#d1d5db",
-    });
-
-    if (!result.isConfirmed) return;
-
-    setIsProcessing(true);
-    try {
-      // 1. Gửi request báo backend (MenuPage update UI status)
-      await onRequestPayment(order.id, selectedPaymentMethod);
-
-      // 2. Xử lý phân luồng
-      if (selectedPaymentMethod === "cash") {
-        Swal.fire({
-          icon: "success",
-          title: "Đã gọi thanh toán",
-          text: "Vui lòng chờ nhân viên đến thu tiền mặt.",
-          confirmButtonColor: "#16a34a",
-        });
-        onClose();
-      } else {
-        await handleOnlinePayment(
-          selectedPaymentMethod,
-          order.id,
-          order.total_amount
-        );
-      }
-    } catch (error) {
-      console.error("Payment error:", error);
-      Swal.fire("Lỗi", error.message || "Có lỗi xảy ra", "error");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  // Tính toán hiển thị (chỉ để show chi tiết, Total lấy từ Backend)
-  const activeItems = (order.items || []).filter(
-    (i) => i.status !== "cancelled"
-  );
-  const subtotal = activeItems.reduce((sum, item) => {
-    const itemPrice = parseFloat(item.price_at_order || item.unit_price || 0);
+  // --- 4. TÍNH TOÁN HIỂN THỊ ---
+  // Nếu Waiter đã chốt (payment_pending), dùng số liệu từ DB (order.subtotal, order.tax...)
+  // Nếu chưa, tạm tính ở Client để khách tham khảo
+  
+  const clientSubtotal = (order.items || []).reduce((sum, item) => {
+    if (item.status === 'cancelled') return sum;
+    const itemPrice = parseFloat(item.price_at_order || item.menu_item?.price || 0);
+    // Cộng giá modifier
     const modifierPrice = (item.modifiers || []).reduce(
-      (modSum, mod) =>
-        modSum + parseFloat(mod.price || mod.modifier_option?.price || 0),
+      (modSum, mod) => modSum + parseFloat(mod.price_adjustment || mod.modifier_option?.price_adjustment || 0),
       0
     );
     return sum + (itemPrice + modifierPrice) * item.quantity;
   }, 0);
 
-  const tax = subtotal * 0.1;
-  const serviceCharge = subtotal * 0.05;
-  // Ưu tiên lấy total từ Backend
-  const totalDisplay = order.total_amount || subtotal + tax + serviceCharge;
+  // Dữ liệu hiển thị cuối cùng
+  const displayData = {
+      subtotal: isReadyToPay ? order.subtotal : clientSubtotal,
+      tax: isReadyToPay ? order.tax_amount : 0,
+      discount: isReadyToPay 
+        ? (order.discount_type === 'percent' ? (order.subtotal * order.discount_value / 100) : order.discount_value) 
+        : 0,
+      total: isReadyToPay ? order.total_amount : clientSubtotal // Tạm tính chưa thuế phí nếu chưa chốt
+  };
+
+  // --- 5. HANDLERS ---
+
+  const handleConfirmAction = async () => {
+    // A. Nếu chưa gọi thanh toán -> Gọi API request (Step 1)
+    // (Trường hợp khách mở bill thủ công xem trước khi Waiter chốt)
+    if (!isPendingStaff && !isReadyToPay) {
+        if (!allItemsServed) {
+            Swal.fire("Chưa thể thanh toán", "Vui lòng đợi món lên đủ!", "warning");
+            return;
+        }
+        // Gọi hàm từ props (MenuPage sẽ gọi API requestPayment)
+        onRequestPayment(order.id, 'cash'); 
+        return;
+    }
+
+    // B. Nếu đang chờ Waiter -> Không làm gì (Nút disabled rồi)
+    if (isPendingStaff) return;
+
+    // C. Nếu đã chốt bill (Ready To Pay) -> Xử lý thanh toán (Step 3)
+    if (isReadyToPay) {
+        if (selectedPaymentMethod === 'cash') {
+            // Tiền mặt: Chỉ hiện thông báo, Waiter sẽ bấm "Thu tiền" trên máy họ
+            Swal.fire({
+                icon: "info",
+                title: "Thanh toán Tiền mặt",
+                text: "Vui lòng chuẩn bị tiền mặt. Nhân viên sẽ đến thu tại bàn.",
+                confirmButtonColor: "#16a34a",
+            });
+            onClose();
+        } else if (selectedPaymentMethod === 'momo') {
+            // MoMo: Gọi API lấy link
+            setIsProcessing(true);
+            try {
+                const res = await CustomerService.createMoMoPayment(order.id);
+                if (res && res.payUrl) {
+                    window.location.href = res.payUrl;
+                } else {
+                    throw new Error("Không lấy được link thanh toán");
+                }
+            } catch (err) {
+                Swal.fire("Lỗi", "Kết nối MoMo thất bại: " + err.message, "error");
+                setIsProcessing(false);
+            }
+        } else {
+            // Các cổng khác (Mock)
+            Swal.fire("Thông báo", "Cổng thanh toán này đang bảo trì.", "info");
+        }
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col animate-fade-in">
+        
         {/* HEADER */}
-        <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-5 flex items-center justify-between shrink-0">
+        <div className="bg-gradient-to-r from-orange-500 to-red-600 text-white p-5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white/20 rounded-lg backdrop-blur-md">
               <Receipt size={24} />
             </div>
             <div>
-              <h2 className="text-lg font-bold">Thanh toán hóa đơn</h2>
-              <p className="text-xs text-purple-100 opacity-90">
-                Bàn {order.table?.table_number} • #
-                {order.id?.slice(-6).toUpperCase()}
+              <h2 className="text-lg font-bold">Hóa đơn bàn {order.table?.table_number}</h2>
+              <p className="text-xs text-orange-100 opacity-90">
+                #{order.id?.slice(-6).toUpperCase()} • {formatDateTime(order.created_at)}
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-white hover:bg-white/20 rounded-full p-2 transition-all"
-          >
+          <button onClick={onClose} className="text-white hover:bg-white/20 rounded-full p-2 transition-all">
             <X size={24} />
           </button>
         </div>
 
         {/* BODY - SCROLLABLE */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50/30">
-          {/* THÔNG TIN ĐƠN */}
-          <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm text-sm">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-500">Thời gian đặt:</span>
-              <span className="font-medium">
-                {formatDateTime(order.created_at)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-500">Trạng thái:</span>
-              <span
-                className={`px-2 py-0.5 rounded text-xs font-bold ${
-                  order.status === "payment"
-                    ? "bg-purple-100 text-purple-700"
-                    : "bg-gray-100 text-gray-700"
-                }`}
-              >
-                {order.status === "payment"
-                  ? "ĐANG THANH TOÁN"
-                  : order.status.toUpperCase()}
-              </span>
-            </div>
-          </div>
-
-          {/* DANH SÁCH MÓN */}
-          <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
-            <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex items-center gap-2">
-              <Receipt size={14} className="text-gray-400" />
-              <span className="text-xs font-bold text-gray-500 uppercase">
-                Chi tiết món ({activeItems.length})
-              </span>
-            </div>
-
-            <div className="divide-y divide-gray-50 p-4">
-              {activeItems.map((item, idx) => {
-                const itemPrice = parseFloat(
-                  item.price_at_order || item.unit_price || 0
-                );
-                const modifierPrice = (item.modifiers || []).reduce(
-                  (sum, mod) =>
-                    sum +
-                    parseFloat(mod.price || mod.modifier_option?.price || 0),
-                  0
-                );
-                const itemTotal = (itemPrice + modifierPrice) * item.quantity;
-
-                return (
-                  <div key={idx} className="py-2 first:pt-0 last:pb-0">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-800 text-sm">
-                          <span className="font-bold text-gray-900 mr-1">
-                            {item.quantity}x
-                          </span>
-                          {item.menu_item?.name || item.name}
-                        </p>
-
-                        {/* Status Món */}
-                        <div className="mt-1">
-                          <span
-                            className={`text-[10px] px-1.5 py-0.5 rounded ${
-                              item.status === "served"
-                                ? "bg-green-100 text-green-700"
-                                : "bg-gray-100 text-gray-600"
-                            }`}
-                          >
-                            {item.status === "served"
-                              ? "✓ Đã lên"
-                              : item.status}
-                          </span>
-                        </div>
-
-                        {/* Modifiers */}
-                        {item.modifiers?.length > 0 && (
-                          <div className="ml-4 mt-1 space-y-0.5">
-                            {item.modifiers.map((mod, i) => (
-                              <p key={i} className="text-[11px] text-gray-500">
-                                + {mod.modifier_option?.name || mod.name}
-                              </p>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <span className="font-medium text-gray-900 text-sm ml-2">
-                        {formatCurrency(itemTotal)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* TỔNG CỘNG */}
-            <div className="bg-gray-50 p-4 space-y-2 border-t border-gray-100">
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>Tạm tính</span>
-                <span>{formatCurrency(subtotal)}</span>
-              </div>
-              <div className="flex justify-between items-center pt-2 border-t border-gray-200 mt-2">
-                <span className="font-bold text-gray-800">TỔNG CỘNG</span>
-                <span className="text-xl font-bold text-purple-600">
-                  {formatCurrency(totalDisplay)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* CẢNH BÁO NẾU CHƯA SERVED HẾT */}
-          {!allItemsServed && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex gap-3">
-              <div className="bg-yellow-100 p-2 rounded-full h-fit">
-                <AlertCircle size={18} className="text-yellow-700" />
-              </div>
-              <div className="text-sm">
-                <p className="font-bold text-yellow-800">Chưa thể thanh toán</p>
-                <p className="text-yellow-700 mt-0.5">
-                  Vui lòng đợi tất cả món được phục vụ (Status: Served) trước
-                  khi thanh toán.
-                </p>
-              </div>
-            </div>
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50/50">
+          
+          {/* BANNER TRẠNG THÁI */}
+          {isPendingStaff && (
+             <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-xl flex items-center gap-3 animate-pulse">
+                <Clock size={24} />
+                <div className="text-sm">
+                    <p className="font-bold">Đang chờ nhân viên xác nhận...</p>
+                    <p>Vui lòng đợi nhân viên mang hóa đơn đến.</p>
+                </div>
+             </div>
           )}
 
-          {/* PHƯƠNG THỨC THANH TOÁN */}
-          {allItemsServed && (
-            <div>
-              <h3 className="font-bold text-gray-700 mb-3 flex items-center gap-2 text-sm uppercase tracking-wider">
-                <CreditCard size={16} /> Phương thức thanh toán
-              </h3>
+          {/* LIST MÓN */}
+          <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+            <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 text-xs font-bold text-gray-500 uppercase">
+               Chi tiết món ăn
+            </div>
+            <div className="p-4 space-y-3">
+                {(order.items || []).map((item, idx) => {
+                    if (item.status === 'cancelled') return null;
+                    const itemPrice = parseFloat(item.price_at_order || item.menu_item?.price || 0);
+                    // Tính giá modifier để hiển thị đúng
+                    const modPrice = (item.modifiers || []).reduce((s, m) => s + parseFloat(m.price_adjustment || m.modifier_option?.price_adjustment || 0), 0);
+                    
+                    return (
+                        <div key={idx} className="flex justify-between text-sm">
+                            <div>
+                                <span className="font-bold text-gray-900 mr-2">{item.quantity}x</span>
+                                <span className="text-gray-700">{item.menu_item?.name}</span>
+                                {item.modifiers?.length > 0 && (
+                                    <div className="text-xs text-gray-400 pl-6">
+                                        + {item.modifiers.map(m => m.modifier_option?.name).join(', ')}
+                                    </div>
+                                )}
+                            </div>
+                            <span className="font-medium">
+                                {formatCurrency((itemPrice + modPrice) * item.quantity)}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+            
+            {/* TỔNG KẾT TIỀN */}
+            <div className="bg-gray-50 p-4 border-t border-gray-100 space-y-2 text-sm">
+                <div className="flex justify-between text-gray-500">
+                    <span>Tạm tính</span>
+                    <span>{formatCurrency(displayData.subtotal)}</span>
+                </div>
+                
+                {/* Chỉ hiện Discount/Tax khi đã Ready (Waiter đã nhập) */}
+                {isReadyToPay && (
+                    <>
+                        {parseFloat(displayData.discount) > 0 && (
+                            <div className="flex justify-between text-red-500">
+                                <span>Giảm giá ({order.discount_type === 'percent' ? `${order.discount_value}%` : 'Tiền mặt'})</span>
+                                <span>-{formatCurrency(displayData.discount)}</span>
+                            </div>
+                        )}
+                        {parseFloat(displayData.tax) > 0 && (
+                            <div className="flex justify-between text-gray-500">
+                                <span>Thuế (VAT/Service)</span>
+                                <span>+{formatCurrency(displayData.tax)}</span>
+                            </div>
+                        )}
+                    </>
+                )}
 
+                <div className="flex justify-between items-center pt-2 border-t border-gray-200 mt-2">
+                    <span className="font-bold text-gray-800 text-lg">TỔNG THANH TOÁN</span>
+                    <span className="text-xl font-bold text-orange-600">
+                        {formatCurrency(displayData.total)}
+                    </span>
+                </div>
+                {/* Ghi chú từ Waiter */}
+                {isReadyToPay && order.note && (
+                    <div className="text-xs text-gray-400 italic text-right">Note: {order.note}</div>
+                )}
+            </div>
+          </div>
+
+          {/* CHỌN PHƯƠNG THỨC (Chỉ hiện khi Ready) */}
+          {isReadyToPay && !isPaid && (
+            <div>
+              <h3 className="font-bold text-gray-700 mb-3 text-sm uppercase">Phương thức thanh toán</h3>
               <div className="grid grid-cols-2 gap-3">
                 {paymentMethods.map((method) => (
                   <button
@@ -393,18 +264,12 @@ const BillModal = ({ isOpen, onClose, order, onRequestPayment }) => {
                     disabled={isProcessing}
                     className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-2 relative ${
                       selectedPaymentMethod === method.id
-                        ? method.activeClass // 🔥 SỬ DỤNG CLASS ĐÃ FIX
+                        ? method.activeClass
                         : "border-gray-100 bg-white hover:border-gray-200 text-gray-500"
-                    } ${
-                      isProcessing
-                        ? "opacity-50 cursor-not-allowed"
-                        : "cursor-pointer active:scale-[0.98]"
                     }`}
                   >
                     {selectedPaymentMethod === method.id && (
-                      <div className="absolute top-2 right-2 text-current">
-                        <CheckCircle size={14} />
-                      </div>
+                      <div className="absolute top-2 right-2"><CheckCircle size={14} /></div>
                     )}
                     <div className="text-2xl">{method.icon}</div>
                     <div className="text-sm font-bold">{method.name}</div>
@@ -415,42 +280,39 @@ const BillModal = ({ isOpen, onClose, order, onRequestPayment }) => {
           )}
         </div>
 
-        {/* FOOTER */}
+        {/* FOOTER BUTTONS */}
         <div className="p-5 bg-white border-t border-gray-100 shrink-0">
-          {allItemsServed ? (
-            <button
-              onClick={handlePaymentRequest}
-              disabled={isProcessing}
-              className={`w-full py-3.5 rounded-xl font-bold text-white flex items-center justify-center gap-2 shadow-lg shadow-purple-200 transition-all ${
-                isProcessing
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 active:scale-[0.98]"
-              }`}
-            >
-              {isProcessing ? (
-                <>
-                  <Loader size={20} className="animate-spin" />
-                  Đang xử lý...
-                </>
-              ) : (
-                <>
-                  <span>Xác nhận thanh toán</span>
-                  <span className="bg-white/20 px-2 py-0.5 rounded text-sm ml-1">
-                    {formatCurrency(totalDisplay)}
-                  </span>
-                </>
-              )}
-            </button>
-          ) : (
-            <button
-              disabled
-              className="w-full py-3.5 rounded-xl font-bold text-gray-400 bg-gray-100 cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              <Loader size={18} className="animate-spin text-gray-400" />
-              Đang chờ món lên đủ...
-            </button>
-          )}
+            {/* Logic hiển thị nút bấm */}
+            {!isPendingStaff && !isReadyToPay && (
+                 <button
+                    onClick={handleConfirmAction}
+                    disabled={!allItemsServed}
+                    className={`w-full py-3.5 rounded-xl font-bold text-white flex items-center justify-center gap-2 shadow-lg transition-all ${
+                        !allItemsServed ? 'bg-gray-400 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700'
+                    }`}
+                 >
+                    {allItemsServed ? 'Gọi Thanh Toán' : 'Đợi món lên đủ...'}
+                 </button>
+            )}
+
+            {isPendingStaff && (
+                <button disabled className="w-full py-3.5 rounded-xl font-bold text-gray-500 bg-gray-200 cursor-not-allowed flex items-center justify-center gap-2">
+                    <Loader size={20} className="animate-spin" /> Đang chờ xác nhận...
+                </button>
+            )}
+
+            {isReadyToPay && (
+                <button 
+                    onClick={handleConfirmAction}
+                    disabled={isProcessing}
+                    className="w-full py-3.5 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 shadow-lg flex items-center justify-center gap-2"
+                >
+                    {isProcessing ? <Loader className="animate-spin"/> : (selectedPaymentMethod === 'cash' ? <Banknote/> : <CreditCard/>)}
+                    {selectedPaymentMethod === 'cash' ? 'Xác nhận trả Tiền mặt' : 'Thanh toán ngay'}
+                </button>
+            )}
         </div>
+
       </div>
     </div>
   );

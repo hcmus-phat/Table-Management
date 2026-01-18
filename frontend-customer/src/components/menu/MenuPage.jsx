@@ -173,13 +173,45 @@ const MenuPage = () => {
           preparing: "Đang nấu",
           ready: "Món đã xong",
           served: "Đã phục vụ",
-          payment: "Đang thanh toán",
+          payment_request: "Đang thanh toán",
+          payment_pending: "Đang thanh toán"
         };
         showToast(
           "info",
           `Đơn hàng: ${statusMap[updatedOrder.status] || updatedOrder.status}`,
         );
       }
+    });
+
+    // 2. [MỚI] Nghe sự kiện Waiter đã CHỐT BILL (confirmBill)
+    // -> Tự động bật BillModal lên để khách thấy tiền & trả
+    socketRef.current.on(`bill_confirmed_table_${tableId}`, (updatedOrder) => {
+        console.log("Bill Confirmed:", updatedOrder);
+        setActiveOrder(updatedOrder);
+        setShowOrderDetail(false); 
+        setShowBillModal(true);    // 🔥 BẬT MODAL THANH TOÁN
+        
+        if (navigator.vibrate) navigator.vibrate(200);
+        showToast("info", "Nhân viên đã gửi hóa đơn. Vui lòng kiểm tra!");
+    });
+
+    // 3. [MỚI] Nghe sự kiện Thanh toán thành công (Ví dụ trả tiền mặt)
+    socketRef.current.on(`payment_success_table_${tableId}`, ({ orderId }) => {
+        setShowBillModal(false);
+        // Hiện thông báo và cũng hỏi đánh giá cho đồng bộ
+        Swal.fire({
+            title: "Thanh toán thành công!",
+            text: "Cảm ơn quý khách! Bạn có muốn đánh giá ngay không?",
+            icon: "success",
+            showCancelButton: true,
+            confirmButtonText: "Đánh giá ngay",
+            cancelButtonText: "Không",
+        }).then((result) => {
+            if (result.isConfirmed) {
+                navigate(`/customer/orders/${orderId}`);
+            }
+            setActiveOrder(null);
+        });
     });
 
     return () => {
@@ -581,23 +613,34 @@ const MenuPage = () => {
 
   const handleRequestBill = async () => {
     if (!activeOrder) return;
+    
+    // Check nếu đã gọi rồi thì không gọi nữa
+    if (activeOrder.status === 'payment_request') {
+        showToast("warning", "Đã gửi yêu cầu. Vui lòng đợi nhân viên!");
+        return;
+    }
+
     const confirm = await Swal.fire({
       title: "Gọi thanh toán?",
-      text: "Nhân viên sẽ mang hóa đơn đến bàn.",
+      text: "Nhân viên sẽ xác nhận hóa đơn và gửi lại cho bạn.",
       icon: "question",
       showCancelButton: true,
-      confirmButtonText: "Xác nhận",
+      confirmButtonText: "Gọi ngay",
       confirmButtonColor: "#16a34a",
     });
 
     if (confirm.isConfirmed) {
       try {
-        await CustomerService.requestBill(activeOrder.id);
-        // Fake update UI để phản hồi nhanh
-        setActiveOrder((prev) => ({ ...prev, status: "payment" }));
-        Swal.fire("Đã gọi!", "Vui lòng đợi nhân viên.", "success");
+        // [FIX] Gọi đúng hàm requestPayment trong Service
+        // Lưu ý: customerService.requestPayment cần trỏ đúng vào API /request-payment
+        const res = await CustomerService.requestPayment(activeOrder.id, 'cash'); // Mặc định gửi cash trước để trigger status
+        
+        if(res.success) {
+            setActiveOrder(res.data); // Cập nhật state ngay lập tức
+            Swal.fire("Đã gửi yêu cầu!", "Vui lòng đợi nhân viên xác nhận hóa đơn.", "success");
+        }
       } catch (err) {
-        Swal.fire("Lỗi", "Thử lại sau.", "error");
+        Swal.fire("Lỗi", err.message || "Thử lại sau.", "error");
       }
     }
   };
