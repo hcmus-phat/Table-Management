@@ -96,40 +96,40 @@ const MenuItemForm = () => {
     const newErrors = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = "Item name is required";
+      newErrors.name = "Tên món là bắt buộc";
     } else if (formData.name.trim().length < 2) {
-      newErrors.name = "Item name must be at least 2 characters";
+      newErrors.name = "Tên món phải có ít nhất 2 ký tự";
     } else if (formData.name.trim().length > 80) {
-      newErrors.name = "Item name cannot exceed 80 characters";
+      newErrors.name = "Tên món không được vượt quá 80 ký tự";
     }
 
     if (!formData.category_id) {
-      newErrors.category_id = "Category is required";
+      newErrors.category_id = "Danh mục là bắt buộc";
     }
 
     if (!formData.price) {
-      newErrors.price = "Price is required";
+      newErrors.price = "Giá là bắt buộc";
     } else if (parseFloat(formData.price) < 0.01) {
-      newErrors.price = "Price must be at least 0.01";
+      newErrors.price = "Giá phải ít nhất là 0.01";
     } else if (parseFloat(formData.price) > 999999.99) {
-      newErrors.price = "Price cannot exceed 999,999.99";
+      newErrors.price = "Giá không được vượt quá 999,999.99";
     }
 
     if (
       formData.prep_time_minutes &&
       parseInt(formData.prep_time_minutes) < 0
     ) {
-      newErrors.prep_time_minutes = "Preparation time cannot be negative";
+      newErrors.prep_time_minutes = "Thời gian chuẩn bị không được âm";
     } else if (
       formData.prep_time_minutes &&
       parseInt(formData.prep_time_minutes) > 240
     ) {
       newErrors.prep_time_minutes =
-        "Preparation time cannot exceed 240 minutes";
+        "Thời gian chuẩn bị không được vượt quá 240 phút";
     }
 
     if (formData.description && formData.description.length > 1000) {
-      newErrors.description = "Description cannot exceed 1000 characters";
+      newErrors.description = "Mô tả không được vượt quá 1000 ký tự";
     }
 
     setErrors(newErrors);
@@ -192,13 +192,13 @@ const MenuItemForm = () => {
       }
 
       setSuccess(
-        isEditing ? "Item updated successfully!" : "Item created successfully!",
+        isEditing ? "Cập nhật món thành công!" : "Tạo món thành công!",
       );
       setTimeout(() => {
         navigate("/admin/menu/items");
       }, 1500);
     } catch (err) {
-      setError(err.message || "Failed to save menu item");
+      setError(err.message || "Không thể lưu món ăn");
     } finally {
       setLoading(false);
     }
@@ -218,7 +218,7 @@ const MenuItemForm = () => {
     });
 
     if (validFiles.length !== files.length) {
-      setError("Some files were skipped. Only JPG/PNG/WebP under 5MB allowed.");
+      setError("Đã bỏ qua một số file. Chỉ chấp nhận JPG/PNG/WebP dưới 5MB.");
     }
 
     if (validFiles.length === 0) return;
@@ -227,7 +227,7 @@ const MenuItemForm = () => {
     if (!isEditing) {
       // Kiểm tra tổng số ảnh
       if (pendingPhotos.length + validFiles.length > 10) {
-        setError("Maximum 10 photos allowed per item.");
+        setError("Tối đa 10 ảnh cho mỗi món.");
         return;
       }
 
@@ -246,9 +246,7 @@ const MenuItemForm = () => {
         }
         return updated;
       });
-      setSuccess(
-        "Photos added. They will be uploaded when you create the item.",
-      );
+      setSuccess("Đã thêm ảnh. Chúng sẽ được tải lên khi bạn tạo món.");
 
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -261,9 +259,9 @@ const MenuItemForm = () => {
     try {
       const response = await menuService.uploadPhotos(id, validFiles);
       setPhotos((prev) => [...prev, ...(response.photos || [])]);
-      setSuccess("Photos uploaded successfully!");
+      setSuccess("Tải ảnh thành công!");
     } catch (err) {
-      setError(err.message || "Failed to upload photos");
+      setError(err.message || "Không thể tải ảnh");
     } finally {
       setUploadingPhotos(false);
       if (fileInputRef.current) {
@@ -299,9 +297,9 @@ const MenuItemForm = () => {
     try {
       await menuService.deletePhoto(id, photoId);
       setPhotos((prev) => prev.filter((p) => p.id !== photoId));
-      setSuccess("Photo deleted successfully!");
+      setSuccess("Xóa ảnh thành công!");
     } catch (err) {
-      setError(err.message || "Failed to delete photo");
+      setError(err.message || "Không thể xóa ảnh");
     }
   };
 
@@ -316,9 +314,9 @@ const MenuItemForm = () => {
           is_primary: p.id === photoId,
         })),
       );
-      setSuccess("Primary photo updated!");
+      setSuccess("Đã cập nhật ảnh chính!");
     } catch (err) {
-      setError(err.message || "Failed to set primary photo");
+      setError(err.message || "Không thể đặt ảnh chính");
     }
   };
 
@@ -330,7 +328,7 @@ const MenuItemForm = () => {
     );
   };
 
-  if (fetchLoading) return <Loading size="lg" text="Loading..." />;
+  if (fetchLoading) return <Loading size="lg" text="Đang tải..." />;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -356,12 +354,12 @@ const MenuItemForm = () => {
         </button>
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
-            {isEditing ? "Edit Menu Item" : "Add New Menu Item"}
+            {isEditing ? "Chỉnh sửa món ăn" : "Thêm món mới"}
           </h1>
           <p className="text-gray-600 mt-1">
             {isEditing
-              ? "Update item details and photos"
-              : "Create a new menu item"}
+              ? "Cập nhật thông tin và hình ảnh món ăn"
+              : "Tạo một món ăn mới"}
           </p>
         </div>
       </div>
@@ -382,23 +380,23 @@ const MenuItemForm = () => {
         {/* Basic Info Card */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Basic Information
+            Thông tin cơ bản
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Item Name"
+              label="Tên món"
               name="name"
               value={formData.name}
               onChange={handleChange}
-              placeholder="e.g., Grilled Salmon"
+              placeholder="Ví dụ: Cá hồi nướng"
               error={errors.name}
               required
             />
 
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category <span className="text-red-500">*</span>
+                Danh mục <span className="text-red-500">*</span>
               </label>
               <select
                 name="category_id"
@@ -408,7 +406,7 @@ const MenuItemForm = () => {
                   errors.category_id ? "border-red-500" : "border-gray-300"
                 }`}
               >
-                <option value="">Select a category</option>
+                <option value="">Chọn danh mục</option>
                 {categories
                   .filter((c) => c.status === "active")
                   .map((cat) => (
@@ -439,7 +437,7 @@ const MenuItemForm = () => {
             />
 
             <Input
-              label="Prep Time (minutes)"
+              label="Thời gian chuẩn bị (phút)"
               name="prep_time_minutes"
               type="number"
               min="0"
@@ -453,13 +451,13 @@ const MenuItemForm = () => {
 
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
+              Mô tả
             </label>
             <textarea
               name="description"
               value={formData.description}
               onChange={handleChange}
-              placeholder="Describe your dish..."
+              placeholder="Mô tả món ăn của bạn..."
               rows={3}
               className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.description ? "border-red-500" : "border-gray-300"
@@ -473,7 +471,7 @@ const MenuItemForm = () => {
           {/* Status */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Status <span className="text-red-500">*</span>
+              Trạng thái <span className="text-red-500">*</span>
             </label>
             <div className="flex flex-wrap gap-4">
               {["available", "unavailable", "sold_out"].map((status) => (
@@ -490,7 +488,11 @@ const MenuItemForm = () => {
                     className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                   />
                   <span className="ml-2 text-sm text-gray-700 capitalize">
-                    {status === "sold_out" ? "Sold Out" : status}
+                    {status === "sold_out"
+                      ? "Hết hàng"
+                      : status === "available"
+                        ? "Còn hàng"
+                        : "Tạm ngừng"}
                   </span>
                 </label>
               ))}
@@ -507,19 +509,18 @@ const MenuItemForm = () => {
               className="w-4 h-4 text-yellow-500 border-gray-300 rounded focus:ring-yellow-500"
             />
             <span className="ml-2 text-sm text-gray-700">
-              ⭐ Chef's Recommendation
+              ⭐ Món đề xuất của bếp
             </span>
           </label>
         </div>
 
         {/* Photos Card */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Photos</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Hình ảnh</h2>
 
           {!isEditing && pendingPhotos.length === 0 && (
             <p className="text-gray-500 text-sm mb-4">
-              Add photos for your menu item. They will be uploaded when you
-              create the item.
+              Thêm hình ảnh cho món ăn. Chúng sẽ được tải lên khi bạn tạo món.
             </p>
           )}
 
@@ -583,7 +584,7 @@ const MenuItemForm = () => {
                 </div>
                 {photo.is_primary && (
                   <span className="absolute bottom-0 left-0 right-0 bg-blue-500 text-white text-xs text-center py-0.5">
-                    Primary
+                    Ảnh chính
                   </span>
                 )}
               </div>
@@ -651,7 +652,7 @@ const MenuItemForm = () => {
                     </div>
                     {isPrimary && (
                       <span className="absolute bottom-0 left-0 right-0 bg-blue-500 text-white text-xs text-center py-0.5">
-                        Primary
+                        Ảnh chính
                       </span>
                     )}
                   </div>
@@ -704,38 +705,38 @@ const MenuItemForm = () => {
                       d="M12 4v16m8-8H4"
                     />
                   </svg>
-                  <span className="text-xs text-gray-500 mt-1">Add</span>
+                  <span className="text-xs text-gray-500 mt-1">Thêm</span>
                 </>
               )}
             </label>
           </div>
 
           <p className="text-xs text-gray-500">
-            Accepted formats: JPG, PNG, WebP. Max size: 5MB per image.{" "}
+            Định dạng hỗ trợ: JPG, PNG, WebP. Kích thước tối đa: 5MB mỗi ảnh.{" "}
             {!isEditing &&
               pendingPhotos.length > 0 &&
-              `(${pendingPhotos.length} photo${pendingPhotos.length > 1 ? "s" : ""} ready to upload)`}
+              `(${pendingPhotos.length} ảnh sẵn sàng tải lên)`}
           </p>
         </div>
 
         {/* Modifiers Card */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Modifiers</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Tùy chọn</h2>
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setModifierModalOpen(true)}
             >
-              Select Modifiers
+              Chọn tùy chọn
             </Button>
           </div>
 
           {selectedModifierGroups.length === 0 ? (
             <p className="text-gray-500 text-sm">
-              No modifier groups selected. Click "Select Modifiers" to add
-              customization options.
+              Chưa chọn nhóm tùy chọn nào. Nhấn "Chọn tùy chọn" để thêm các lựa
+              chọn tùy chỉnh.
             </p>
           ) : (
             <div className="space-y-2">
@@ -753,9 +754,9 @@ const MenuItemForm = () => {
                       <span className="ml-2 text-sm text-gray-500">
                         (
                         {group.selection_type === "single"
-                          ? "Single select"
-                          : "Multi select"}
-                        {group.is_required && ", Required"})
+                          ? "Chọn một"
+                          : "Chọn nhiều"}
+                        {group.is_required && ", Bắt buộc"})
                       </span>
                       {group.options && (
                         <div className="text-xs text-gray-500 mt-1">
@@ -805,7 +806,7 @@ const MenuItemForm = () => {
             onClick={() => navigate("/admin/menu/items")}
             disabled={loading}
           >
-            Cancel
+            Hủy
           </Button>
           <Button type="submit" disabled={loading}>
             {loading ? (
@@ -829,12 +830,12 @@ const MenuItemForm = () => {
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   />
                 </svg>
-                Saving...
+                Đang lưu...
               </span>
             ) : isEditing ? (
-              "Update Item"
+              "Cập nhật"
             ) : (
-              "Create Item"
+              "Tạo món"
             )}
           </Button>
         </div>
@@ -844,14 +845,13 @@ const MenuItemForm = () => {
       <Modal
         isOpen={modifierModalOpen}
         onClose={() => setModifierModalOpen(false)}
-        title="Select Modifier Groups"
+        title="Chọn nhóm tùy chọn"
         size="md"
       >
         <div className="space-y-2 max-h-96 overflow-y-auto">
           {modifierGroups.length === 0 ? (
             <p className="text-gray-500 text-center py-4">
-              No modifier groups available. Create some in the Modifiers section
-              first.
+              Không có nhóm tùy chọn nào. Hãy tạo trong phần Tùy chọn trước.
             </p>
           ) : (
             modifierGroups
@@ -878,9 +878,9 @@ const MenuItemForm = () => {
                       </span>
                       <div className="text-sm text-gray-500">
                         {group.selection_type === "single"
-                          ? "Single select"
-                          : "Multi select"}
-                        {group.is_required && " • Required"}
+                          ? "Chọn một"
+                          : "Chọn nhiều"}
+                        {group.is_required && " • Bắt buộc"}
                       </div>
                     </div>
                   </div>
@@ -889,7 +889,7 @@ const MenuItemForm = () => {
           )}
         </div>
         <div className="mt-4 pt-4 border-t flex justify-end">
-          <Button onClick={() => setModifierModalOpen(false)}>Done</Button>
+          <Button onClick={() => setModifierModalOpen(false)}>Xong</Button>
         </div>
       </Modal>
     </div>

@@ -139,11 +139,11 @@ const MenuItemList = () => {
   const getStatusBadge = (status) => {
     switch (status) {
       case "available":
-        return <Badge variant="success">Available</Badge>;
+        return <Badge variant="success">Còn hàng</Badge>;
       case "unavailable":
-        return <Badge variant="secondary">Unavailable</Badge>;
+        return <Badge variant="secondary">Tạm ngừng</Badge>;
       case "sold_out":
-        return <Badge variant="danger">Sold Out</Badge>;
+        return <Badge variant="danger">Hết hàng</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -168,7 +168,7 @@ const MenuItemList = () => {
   if (loading)
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-orange-50 flex items-center justify-center">
-        <Loading size="lg" text="Loading menu items..." />
+        <Loading size="lg" text="Đang tải danh sách món..." />
       </div>
     );
 
@@ -196,10 +196,10 @@ const MenuItemList = () => {
               </div>
               <div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-                  Menu Items
+                  Quản lý món ăn
                 </h1>
                 <p className="text-gray-600 mt-1">
-                  Manage your restaurant's menu items
+                  Quản lý các món ăn trong thực đơn nhà hàng
                 </p>
               </div>
             </div>
@@ -221,7 +221,7 @@ const MenuItemList = () => {
                     d="M12 4v16m8-8H4"
                   />
                 </svg>
-                Add Item
+                Thêm món
               </span>
             </Button>
           </div>
@@ -256,14 +256,14 @@ const MenuItemList = () => {
               />
             </svg>
             <h2 className="text-lg font-semibold text-gray-800">
-              Filters & Search
+              Bộ lọc & Tìm kiếm
             </h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Search */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search
+                Tìm kiếm
               </label>
               <div className="relative">
                 <svg
@@ -284,7 +284,7 @@ const MenuItemList = () => {
                   name="search"
                   value={filters.search}
                   onChange={handleFilterChange}
-                  placeholder="Search items..."
+                  placeholder="Tìm món ăn..."
                   className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all bg-gray-50 hover:bg-white"
                 />
               </div>
@@ -293,7 +293,7 @@ const MenuItemList = () => {
             {/* Category */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category
+                Danh mục
               </label>
               <select
                 name="category_id"
@@ -301,7 +301,7 @@ const MenuItemList = () => {
                 onChange={handleFilterChange}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all bg-gray-50 hover:bg-white"
               >
-                <option value="all">All Categories</option>
+                <option value="all">Tất cả danh mục</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
@@ -313,7 +313,7 @@ const MenuItemList = () => {
             {/* Status */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status
+                Trạng thái
               </label>
               <select
                 name="status"
@@ -321,42 +321,42 @@ const MenuItemList = () => {
                 onChange={handleFilterChange}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all bg-gray-50 hover:bg-white"
               >
-                <option value="all">All Statuses</option>
-                <option value="available">Available</option>
-                <option value="unavailable">Unavailable</option>
-                <option value="sold_out">Sold Out</option>
+                <option value="all">Tất cả trạng thái</option>
+                <option value="available">Còn hàng</option>
+                <option value="unavailable">Tạm ngừng</option>
+                <option value="sold_out">Hết hàng</option>
               </select>
             </div>
 
             {/* Sort */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Sort By
+                Sắp xếp theo
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => handleSort("created_at")}
                   className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${sortBy === "created_at" ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
                 >
-                  Date <SortIcon field="created_at" />
+                  Ngày tạo <SortIcon field="created_at" />
                 </button>
                 <button
                   onClick={() => handleSort("price")}
                   className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${sortBy === "price" ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
                 >
-                  Price <SortIcon field="price" />
+                  Giá <SortIcon field="price" />
                 </button>
                 <button
                   onClick={() => handleSort("name")}
                   className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${sortBy === "name" ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
                 >
-                  Name <SortIcon field="name" />
+                  Tên <SortIcon field="name" />
                 </button>
                 <button
                   onClick={() => handleSort("popularity")}
                   className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${sortBy === "popularity" ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
                 >
-                  Popular <SortIcon field="popularity" />
+                  Phổ biến <SortIcon field="popularity" />
                 </button>
               </div>
             </div>
@@ -367,7 +367,7 @@ const MenuItemList = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-orange-100 text-sm font-medium">Total Items</p>
+              <p className="text-orange-100 text-sm font-medium">Tổng số món</p>
               <svg
                 className="w-8 h-8 text-orange-200"
                 fill="none"
@@ -389,7 +389,7 @@ const MenuItemList = () => {
 
           <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-green-100 text-sm font-medium">Available</p>
+              <p className="text-green-100 text-sm font-medium">Còn hàng</p>
               <svg
                 className="w-8 h-8 text-green-200"
                 fill="none"
@@ -414,7 +414,7 @@ const MenuItemList = () => {
 
           <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-yellow-100 text-sm font-medium">Chef's Pick</p>
+              <p className="text-yellow-100 text-sm font-medium">Món đề xuất</p>
               <span className="text-4xl">⭐</span>
             </div>
             <p className="text-4xl font-bold">
@@ -427,7 +427,7 @@ const MenuItemList = () => {
 
           <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg p-6 text-white transform hover:scale-105 transition-transform">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-purple-100 text-sm font-medium">Categories</p>
+              <p className="text-purple-100 text-sm font-medium">Danh mục</p>
               <svg
                 className="w-8 h-8 text-purple-200"
                 fill="none"
@@ -465,14 +465,14 @@ const MenuItemList = () => {
               </svg>
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              No Menu Items Found
+              Không tìm thấy món ăn
             </h3>
             <p className="text-gray-600 mb-6">
               {filters.search ||
               filters.category_id !== "all" ||
               filters.status !== "all"
-                ? "Try adjusting your filters."
-                : "Get started by creating your first menu item."}
+                ? "Thử điều chỉnh bộ lọc của bạn."
+                : "Bắt đầu bằng cách tạo món ăn đầu tiên."}
             </p>
             {!filters.search &&
               filters.category_id === "all" &&
@@ -492,7 +492,7 @@ const MenuItemList = () => {
                         d="M12 4v16m8-8H4"
                       />
                     </svg>
-                    Add First Item
+                    Thêm món đầu tiên
                   </span>
                 </Button>
               )}
@@ -504,31 +504,31 @@ const MenuItemList = () => {
                 <thead className="bg-gradient-to-r from-gray-50 to-orange-50 border-b-2 border-gray-200">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Image
+                      Hình ảnh
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Name
+                      Tên món
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Category
+                      Danh mục
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Price
+                      Giá
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Status
+                      Trạng thái
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Chef Pick
+                      Đề xuất
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Orders
+                      Đơn hàng
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Created
+                      Ngày tạo
                     </th>
                     <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Actions
+                      Thao tác
                     </th>
                   </tr>
                 </thead>
@@ -666,9 +666,9 @@ const MenuItemList = () => {
             {totalPages > 1 && (
               <div className="bg-gradient-to-r from-gray-50 to-orange-50 px-6 py-4 flex items-center justify-between border-t-2 border-gray-200">
                 <div className="text-sm font-medium text-gray-600">
-                  Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                  {Math.min(currentPage * itemsPerPage, sortedItems.length)} of{" "}
-                  {sortedItems.length} items
+                  Hiển thị {(currentPage - 1) * itemsPerPage + 1} đến{" "}
+                  {Math.min(currentPage * itemsPerPage, sortedItems.length)}{" "}
+                  trong số {sortedItems.length} món
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -676,7 +676,7 @@ const MenuItemList = () => {
                     disabled={currentPage === 1}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white transition-all"
                   >
-                    Previous
+                    Trước
                   </button>
                   {Array.from({ length: totalPages }, (_, i) => i + 1)
                     .filter(
@@ -709,7 +709,7 @@ const MenuItemList = () => {
                     disabled={currentPage === totalPages}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white transition-all"
                   >
-                    Next
+                    Sau
                   </button>
                 </div>
               </div>
@@ -728,9 +728,9 @@ const MenuItemList = () => {
             })
           }
           onConfirm={confirmDelete}
-          title="Delete Menu Item"
-          message={`Are you sure you want to delete "${confirmDialog.itemName}"? This action cannot be undone.`}
-          confirmText="Delete"
+          title="Xóa món ăn"
+          message={`Bạn có chắc chắn muốn xóa "${confirmDialog.itemName}"? Hành động này không thể hoàn tác.`}
+          confirmText="Xóa"
           confirmVariant="danger"
         />
       </div>
