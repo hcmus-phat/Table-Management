@@ -469,7 +469,7 @@ class CustomerService {
         try {
             
             const customer = await Customer.findOne({
-                where: { email }
+                where: { email, auth_method: 'email' }
             });
 
             if (!customer) {
