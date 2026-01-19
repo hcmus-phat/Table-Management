@@ -266,6 +266,7 @@ class CustomerService {
             where: { 
                 email,
                 otp_code: otp,
+                auth_method: 'email', 
             }
             });
 
