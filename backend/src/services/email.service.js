@@ -5,11 +5,11 @@ class EmailService {
   // Gửi OTP cho đăng ký
   async sendOTPEmail(email, otp, username = '') {
     try {
+      const subject = `[Smart Restaurant] Mã OTP xác thực - ${otp}`;
       
       const mailOptions = {
-        from: process.env.EMAIL_FROM || '"Smart Restaurant" <noreply@smartrestaurant.com>',
         to: email,
-        subject: 'Mã xác thực OTP - Smart Restaurant',
+        subject: subject,
         html: `
           <!DOCTYPE html>
           <html>
@@ -52,7 +52,7 @@ class EmailService {
             </div>
             
             <div class="content">
-              <h2 style="color: #1f2937; text-align: center;">Xin chào ${username}!</h2>
+              <h2 style="color: #1f2937; text-align: center;">Xin chào ${username || 'bạn'}!</h2>
               
               <p style="color: #4b5563; text-align: center;">
                 Sử dụng mã OTP bên dưới để hoàn tất xác thực email
@@ -85,12 +85,13 @@ class EmailService {
           </body>
           </html>
         `,
-        text: `Xin chào ${username}, mã OTP của bạn là: ${otp}. Mã có hiệu lực trong 15 phút.`
+        text: `Xin chào ${username || 'bạn'}, mã OTP của bạn là: ${otp}. Mã có hiệu lực trong 15 phút.`
       };
 
+      console.log(`📧 Gửi OTP đến: ${email}`);
       const info = await transporter.sendMail(mailOptions);
       
-      console.log('✅ OTP email sent! Message ID:', info.messageId);
+      console.log('✅ OTP email sent successfully!');
       return true;
       
     } catch (error) {
@@ -102,6 +103,7 @@ class EmailService {
         return true; // Trả về true để không fail register
       }
       
+      // Trong production, throw error
       throw new Error(`Không thể gửi email OTP: ${error.message}`);
     }
   }
@@ -112,7 +114,6 @@ class EmailService {
       console.log(`📧 Sending verification success email to: ${email}`);
       
       const mailOptions = {
-        from: process.env.EMAIL_FROM || '"Smart Restaurant" <noreply@smartrestaurant.com>',
         to: email,
         subject: '🎉 Xác thực email thành công - Smart Restaurant',
         html: `
@@ -137,7 +138,7 @@ class EmailService {
             <div class="content">
               <div class="success-icon">✅</div>
               <h2 style="color: #10b981;">Xác thực email thành công!</h2>
-              <p>Chúc mừng <strong>${username}</strong>,</p>
+              <p>Chúc mừng <strong>${username || 'bạn'}</strong>,</p>
               <p>Email của bạn đã được xác thực thành công tại Smart Restaurant.</p>
               <p>Bây giờ bạn có thể đăng nhập và sử dụng đầy đủ tính năng của chúng tôi.</p>
               
@@ -155,17 +156,82 @@ class EmailService {
           </body>
           </html>
         `,
-        text: `Chúc mừng ${username}! Email của bạn đã được xác thực thành công tại Smart Restaurant.`
+        text: `Chúc mừng ${username || 'bạn'}! Email của bạn đã được xác thực thành công tại Smart Restaurant.`
       };
 
       const info = await transporter.sendMail(mailOptions);
       
-      console.log('✅ Verification success email sent! Message ID:', info.messageId);
+      console.log('✅ Verification success email sent!');
       return true;
       
     } catch (error) {
       console.error('❌ Error sending verification success email:', error.message);
-      return false; // Không throw error vì đây chỉ là email thông báo
+      // Không throw error vì đây chỉ là email thông báo, không ảnh hưởng đến luồng chính
+      return false;
+    }
+  }
+
+  // Thêm các hàm email khác nếu cần
+  async sendPasswordResetEmail(email, resetToken, username = '') {
+    try {
+      const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+      
+      const mailOptions = {
+        to: email,
+        subject: '🔐 Đặt lại mật khẩu - Smart Restaurant',
+        html: `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: linear-gradient(135deg, #3b82f6, #60a5fa); padding: 20px; text-align: center; border-radius: 10px 10px 0 0; }
+              .header h1 { color: white; margin: 0; }
+              .content { background: white; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px; }
+              .button { display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; }
+              .warning { background-color: #fef3c7; padding: 15px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #f59e0b; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>Smart Restaurant</h1>
+            </div>
+            
+            <div class="content">
+              <h2 style="text-align: center;">Đặt lại mật khẩu</h2>
+              <p>Xin chào ${username || 'bạn'},</p>
+              <p>Chúng tôi đã nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.</p>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${resetUrl}" class="button">Đặt lại mật khẩu</a>
+              </div>
+              
+              <p>Hoặc sao chép link sau vào trình duyệt:</p>
+              <p style="word-break: break-all; background-color: #f3f4f6; padding: 10px; border-radius: 5px;">
+                ${resetUrl}
+              </p>
+              
+              <div class="warning">
+                <p><strong>⚠️ Liên kết này sẽ hết hạn sau 1 giờ</strong></p>
+                <p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `,
+        text: `Xin chào ${username || 'bạn'}, nhấn vào link sau để đặt lại mật khẩu: ${resetUrl}. Link hết hạn sau 1 giờ.`
+      };
+
+      console.log(`📧 Gửi email đặt lại mật khẩu đến: ${email}`);
+      await transporter.sendMail(mailOptions);
+      
+      console.log('✅ Password reset email sent!');
+      return true;
+      
+    } catch (error) {
+      console.error('❌ Error sending password reset email:', error.message);
+      throw error;
     }
   }
 }
