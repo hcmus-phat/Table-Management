@@ -1,30 +1,35 @@
 import express from "express";
 import {
-	getAllCategory,
-	createCategory,
-	updateCategory,
-	updateCategoryStatus,
-	deleteCategory,
+  getAllCategory,
+  createCategory,
+  updateCategory,
+  updateCategoryStatus,
+  deleteCategory,
 } from "../../controllers/restaurant/category.controller.js";
 import {
-	getAllItem,
-	getItemById,
-	createItem,
-	updateItem,
-	deleteItem,
+  getAllItem,
+  getItemById,
+  createItem,
+  updateItem,
+  deleteItem,
 } from "../../controllers/restaurant/item.controller.js";
 
 import {
-	getAllModifierGroups,
-	getModifierGroupById,
-	createModifierGroup,
-	updateModifierGroup,
-	deleteModifierGroup,
-	createModifierOption,
-	updateModifierOption,
-	deleteModifierOption,
-	attachModifierGroup,
+  getAllModifierGroups,
+  getModifierGroupById,
+  createModifierGroup,
+  updateModifierGroup,
+  deleteModifierGroup,
+  createModifierOption,
+  updateModifierOption,
+  deleteModifierOption,
+  attachModifierGroup,
 } from "../../controllers/restaurant/modifier.controller.js";
+
+import {
+  uploadMenuItemPhotos,
+  handleUploadErrors,
+} from "../../middlewares/uploadMiddleware.js";
 
 const router = express.Router();
 
@@ -51,8 +56,8 @@ router.get("/items", getAllItem);
 //GET	/api/admin/menu/items/:id
 router.get("/items/:id", getItemById);
 
-//POST	/api/admin/menu/items
-router.post("/items", createItem);
+//POST	/api/admin/menu/items (hỗ trợ cả JSON và multipart/form-data với photos)
+router.post("/items", uploadMenuItemPhotos, handleUploadErrors, createItem);
 
 // PUT	/api/admin/menu/items/:id
 router.put("/items/:id", updateItem);

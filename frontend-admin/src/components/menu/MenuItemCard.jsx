@@ -93,7 +93,7 @@ const MenuItemCard = ({ item, onCustomize }) => {
 				<div className="flex items-center justify-between mt-4">
 					<div className="flex flex-col">
 						<span className="text-xl font-bold text-gray-900">
-							${parseFloat(item.price || 0).toFixed(2)}
+							{parseFloat(item.price || 0).toFixed(2)} ₫
 						</span>
 						{item.prep_time_minutes > 0 && (
 							<span className="text-sm text-gray-500">

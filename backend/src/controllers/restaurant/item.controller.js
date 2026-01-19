@@ -5,6 +5,7 @@ import OrderItem from "../../models/orderItem.js";
 import { Op, fn, col } from "sequelize";
 
 import { ItemService } from "../../services/menuItem.service.js";
+import menuItemPhotoService from "../../services/menuItemPhoto.service.js";
 import {
   createMenuItemSchema,
   updateMenuItemSchema,
@@ -12,7 +13,7 @@ import {
 } from "../../validators/item.validator.js";
 import { validate } from "../../middlewares/validator.js";
 
-const { MenuItemPhoto } = db;
+const { MenuItemPhoto, sequelize } = db;
 
 //LẤY TẤT CẢ ITEM
 export const getAllItem = async (req, res) => {
@@ -129,41 +130,81 @@ export const getItemById = async (req, res) => {
   }
 };
 
-//TẠO ITEM MỚI
-export const createItem = [
-  validate(createMenuItemSchema), //validate dữ liệu đầu vào
-  async (req, res) => {
-    try {
-      const validatedData = req.validatedData;
+//TẠO ITEM MỚI (hỗ trợ cả JSON và multipart/form-data với photos)
+export const createItem = async (req, res) => {
+  const transaction = await sequelize.transaction();
 
-      // validate business logic
-      const validationErrors = ItemService.validateItemData(validatedData);
-      if (validationErrors.length > 0) {
-        //nếu có lỗi validate
-        return res.status(400).json({
-          success: false,
-          message: "Validation failed",
-          errors: validationErrors,
-        });
-      }
+  try {
+    // Parse data từ form-data hoặc JSON body
+    let itemData;
+    if (req.body.itemData) {
+      // Nếu gửi qua form-data, itemData sẽ là JSON string
+      itemData =
+        typeof req.body.itemData === "string"
+          ? JSON.parse(req.body.itemData)
+          : req.body.itemData;
+    } else {
+      // Nếu gửi qua JSON body (không có photos)
+      itemData = req.body;
+    }
 
-      const newItem = await ItemService.create(validatedData);
-
-      res.status(201).json({
-        success: true,
-        message: "Item created successfully",
-        data: newItem,
-      });
-    } catch (error) {
-      console.error("Error creating item:", error);
-
-      res.status(400).json({
+    // Validate business logic
+    const validationErrors = ItemService.validateItemData(itemData);
+    if (validationErrors.length > 0) {
+      await transaction.rollback();
+      return res.status(400).json({
         success: false,
-        error: error.message,
+        message: "Validation failed",
+        errors: validationErrors,
       });
     }
-  },
-];
+
+    // Tạo item mới
+    const newItem = await ItemService.create(itemData, transaction);
+
+    // Upload photos nếu có
+    let photos = [];
+    if (req.files && req.files.length > 0) {
+      photos = await menuItemPhotoService.uploadPhotosWithTransaction(
+        newItem.id,
+        req.files,
+        transaction,
+      );
+    }
+
+    await transaction.commit();
+
+    // Fetch lại item với photos để trả về
+    const itemWithPhotos = await MenuItem.findByPk(newItem.id, {
+      include: [
+        {
+          model: MenuItemPhoto,
+          as: "photos",
+          attributes: ["id", "url", "is_primary"],
+        },
+        {
+          model: MenuCategory,
+          as: "category",
+          attributes: ["id", "name"],
+        },
+      ],
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Item created successfully",
+      data: itemWithPhotos,
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Error creating item:", error);
+
+    res.status(400).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};
 
 //CẬP NHẬT ITEM
 export const updateItem = [
