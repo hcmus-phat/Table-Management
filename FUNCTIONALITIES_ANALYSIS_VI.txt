@@ -1,0 +1,364 @@
+================================================================================
+                    PHÂN TÍCH CHỨC NĂNG HỆ THỐNG
+          Hệ Thống Quản Lý Bàn Nhà Hàng Thông Minh
+================================================================================
+
+Tên Dự Án: Table Management System (Hệ thống Quản lý Bàn)
+Mô Tả: Hệ thống quản lý nhà hàng toàn diện dựa trên nền tảng web, cho phép 
+       đặt món qua mã QR, quản lý màn hình bếp, hỗ trợ phục vụ và giao diện 
+       thực đơn dành cho khách hàng.
+
+================================================================================
+                         1. XÁC THỰC VÀ PHÂN QUYỀN NGƯỜI DÙNG
+================================================================================
+
+1.1. Xác Thực Nhân Viên (Cổng Admin - frontend-admin)
+    - Đăng nhập bằng tên người dùng và mật khẩu (sử dụng JWT)
+    - Phân quyền truy cập theo vai trò với 4 loại:
+        * Super Admin: Toàn quyền hệ thống, có thể tạo tài khoản Admin
+        * Admin: Quản lý nhân viên, thực đơn, bàn, xem báo cáo
+        * Waiter (Phục vụ): Xem đơn hàng, xác nhận đơn, xử lý thanh toán
+        * Kitchen (Bếp): Xem và quản lý đơn hàng bếp
+    - Kích hoạt/Vô hiệu hóa tài khoản bởi admin
+    - Quản lý phiên đăng nhập với JWT tokens (hết hạn sau 24h)
+
+1.2. Xác Thực Khách Hàng (frontend-customer)
+    - Đăng ký bằng Email/Mật khẩu với xác thực email
+    - Tích hợp đăng nhập Google OAuth (mạng xã hội)
+    - Xác thực OTP qua email
+    - Đặt lại mật khẩu qua email (Quên mật khẩu)
+    - Truy cập khách vãng lai qua quét mã QR (không cần đăng nhập)
+    - Quản lý hồ sơ (cập nhật thông tin, tải ảnh đại diện)
+
+================================================================================
+                         2. QUẢN LÝ BÀN
+================================================================================
+
+2.1. Thao Tác CRUD Bàn
+    - Tạo bàn mới với các thuộc tính:
+        * Số bàn (định dạng chữ và số)
+        * Sức chứa (1-20 chỗ ngồi)
+        * Vị trí (VD: Tầng 1, Sân thượng, Phòng VIP)
+        * Mô tả (tùy chọn)
+        * Trạng thái (hoạt động/không hoạt động)
+    - Chỉnh sửa thông tin bàn hiện có
+    - Kích hoạt/Vô hiệu hóa bàn
+    - Xem tất cả bàn với tùy chọn lọc và sắp xếp
+
+2.2. Lọc & Sắp Xếp Bàn
+    - Tìm kiếm theo số bàn, vị trí, mô tả
+    - Lọc theo trạng thái (hoạt động/không hoạt động)
+    - Lọc theo vị trí
+    - Sắp xếp theo: số bàn, sức chứa, ngày tạo
+    - Chuyển đổi thứ tự tăng/giảm dần
+
+2.3. Thống Kê Dashboard
+    - Tổng số bàn
+    - Số bàn đang hoạt động
+    - Số bàn không hoạt động
+    - Tổng sức chứa chỗ ngồi
+
+================================================================================
+                         3. QUẢN LÝ MÃ QR
+================================================================================
+
+3.1. Tạo Mã QR
+    - Tạo mã QR duy nhất cho từng bàn
+    - Token JWT được nhúng trong mã QR để bảo mật
+    - Mã QR liên kết trực tiếp đến trang thực đơn khách hàng
+
+3.2. Các Thao Tác Mã QR
+    - Tạo mã QR cho từng bàn riêng lẻ
+    - Tạo lại mã QR (vô hiệu hóa mã cũ để bảo mật)
+    - Tạo lại hàng loạt tất cả mã QR
+    - Xem trước mã QR với data URL
+    - Tải mã QR định dạng PNG hoặc PDF
+    - Tải tất cả mã QR dạng file ZIP
+
+3.3. Bảo Mật Token QR
+    - Xác thực token khi khách hàng truy cập
+    - Kiểm tra khớp token với bàn
+    - Theo dõi hết hạn và tái tạo token
+    - Ghi log bảo mật để kiểm tra
+
+================================================================================
+                         4. QUẢN LÝ THỰC ĐƠN
+================================================================================
+
+4.1. Quản Lý Danh Mục
+    - Tạo, sửa, xóa danh mục thực đơn
+    - Thiết lập thứ tự hiển thị cho danh mục
+    - Kích hoạt/vô hiệu hóa danh mục
+    - Danh mục bao gồm: tên, mô tả, thứ tự hiển thị, trạng thái
+
+4.2. Quản Lý Món Ăn
+    - Tạo món ăn với các thuộc tính:
+        * Tên, mô tả, giá
+        * Gán vào danh mục
+        * Đánh dấu món đề xuất của bếp trưởng
+        * Thời gian chuẩn bị (phút)
+        * Trạng thái: còn hàng, tạm hết, hết món
+    - Chỉnh sửa và xóa mềm món ăn
+    - Tải nhiều ảnh cho mỗi món
+    - Đặt ảnh chính để hiển thị
+
+4.3. Nhóm Tùy Chọn & Lựa Chọn Bổ Sung
+    - Tạo nhóm tùy chọn (VD: "Lựa chọn nước sốt", "Kích cỡ")
+    - Cấu hình cài đặt nhóm:
+        * Bắt buộc/tùy chọn
+        * Số lựa chọn tối thiểu
+        * Số lựa chọn tối đa
+    - Thêm các lựa chọn với điều chỉnh giá
+    - Gắn nhóm tùy chọn vào món ăn
+
+4.4. Quản Lý Ảnh
+    - Tải ảnh món ăn
+    - Tích hợp Cloudinary để lưu trữ ảnh
+    - Xử lý và tối ưu hình ảnh
+    - Đặt ảnh chính cho từng món
+
+================================================================================
+                         5. QUẢN LÝ ĐƠN HÀNG
+================================================================================
+
+5.1. Vòng Đời Đơn Hàng
+    - Luồng trạng thái đơn hàng:
+        * pending (chờ xử lý)     -> Khách đặt đơn
+        * confirmed (đã xác nhận) -> Phục vụ xác nhận đơn
+        * preparing (đang nấu)    -> Bếp đang nấu
+        * ready (sẵn sàng)        -> Bếp nấu xong
+        * served (đã phục vụ)     -> Đã mang ra bàn
+        * payment_request         -> Khách yêu cầu thanh toán
+        * payment_pending         -> Đang chờ xử lý thanh toán
+        * completed (hoàn thành)  -> Đã thanh toán, đóng đơn
+        * cancelled (đã hủy)      -> Đơn bị hủy
+
+5.2. Tạo Đơn Hàng (Khách Hàng)
+    - Duyệt thực đơn theo danh mục
+    - Tìm kiếm món ăn
+    - Lọc theo món đề xuất của bếp trưởng
+    - Thêm món vào giỏ với các tùy chọn bổ sung
+    - Thêm ghi chú/yêu cầu đặc biệt
+    - Gửi đơn từ bàn (qua truy cập mã QR)
+
+5.3. Quản Lý Các Món Trong Đơn
+    - Thêm món vào đơn hàng hiện có
+    - Thay đổi số lượng món
+    - Hủy từng món riêng lẻ
+    - Theo dõi trạng thái từng món
+    - Hỗ trợ chọn tùy chọn bổ sung
+
+5.4. Theo Dõi Đơn Hàng
+    - Cập nhật trạng thái đơn hàng real-time qua Socket.IO
+    - Xem lịch sử đơn hàng (cho khách đã đăng nhập)
+    - Chi tiết đơn hàng với phân tích từng món
+    - Tính toán tạm tính, thuế, giảm giá
+    - Tổng tiền cuối cùng
+
+================================================================================
+                         6. HỆ THỐNG HIỂN THỊ BẾP (KDS)
+================================================================================
+
+6.1. Dashboard Bếp
+    - Xem đơn hàng đến real-time
+    - Lọc theo trạng thái đơn hàng
+    - Hiển thị số bàn và vị trí
+    - Hiển thị các món đã đặt với tùy chọn bổ sung
+    - Ước tính thời gian chuẩn bị
+
+6.2. Các Thao Tác Bếp
+    - Cập nhật trạng thái đơn (đang nấu -> sẵn sàng)
+    - Cập nhật trạng thái từng món
+    - Xem ghi chú và yêu cầu đặc biệt
+    - Thống kê bếp:
+        * Số đơn đang chờ
+        * Đang nấu
+        * Sẵn sàng phục vụ
+        * Hoàn thành hôm nay
+
+6.3. Cập Nhật Real-time
+    - Tích hợp Socket.IO cho thông báo tức thì
+    - Tự động làm mới danh sách đơn
+    - Cảnh báo âm thanh/hình ảnh cho đơn mới
+
+================================================================================
+                         7. DASHBOARD PHỤC VỤ (WAITER)
+================================================================================
+
+7.1. Quản Lý Đơn Hàng
+    - Xem tất cả đơn đang hoạt động theo bàn
+    - Xác nhận đơn chờ xử lý (gửi xuống bếp)
+    - Cập nhật trạng thái đơn
+    - Hủy đơn với lý do
+
+7.2. Xử Lý Thanh Toán
+    - Nhận yêu cầu thanh toán từ khách
+    - Xem chi tiết hóa đơn
+    - Xác nhận thanh toán tiền mặt
+    - Theo dõi trạng thái thanh toán
+
+7.3. Giám Sát Bàn
+    - Xem những bàn có đơn đang hoạt động
+    - Xem trạng thái đơn theo bàn
+    - Thao tác nhanh theo bàn
+
+================================================================================
+                         8. HỆ THỐNG THANH TOÁN
+================================================================================
+
+8.1. Phương Thức Thanh Toán Hỗ Trợ
+    - Tiền mặt (Cash)
+    - MoMo (Ví điện tử Việt Nam)
+
+8.2. Luồng Thanh Toán
+    - Khách yêu cầu hóa đơn từ chi tiết đơn hàng
+    - Tất cả món phải được phục vụ trước khi thanh toán
+    - Khách chọn phương thức thanh toán
+    - Tiền mặt: Phục vụ xác nhận đã nhận
+    - Thanh toán online: Tích hợp cổng thanh toán (Mock)
+    - Ghi nhận mã giao dịch
+    - Hoàn thành đơn khi thanh toán thành công
+
+8.3. Tạo Hóa Đơn
+    - Hóa đơn chi tiết với các tùy chọn bổ sung
+    - Tính tạm tính
+    - Tính thuế
+    - Hỗ trợ giảm giá (phần trăm hoặc cố định)
+    - Tổng tiền cuối cùng
+
+================================================================================
+                         9. HỆ THỐNG ĐÁNH GIÁ & XẾP HẠNG
+================================================================================
+
+9.1. Đánh Giá Khách Hàng
+    - Đánh giá món ăn (1-5 sao)
+    - Viết bình luận đánh giá
+    - Yêu cầu đã mua hàng để đánh giá
+    - Mỗi món chỉ đánh giá một lần mỗi đơn (chống spam)
+
+9.2. Xác Thực Đánh Giá
+    - Phải đã đặt món đó
+    - Đơn hàng phải thuộc về khách hàng
+    - Ngăn chặn đánh giá trùng lặp
+    - Hỗ trợ khách vãng lai và khách đã đăng nhập
+
+9.3. Hiển Thị Đánh Giá
+    - Điểm đánh giá trung bình theo món
+    - Số lượng đánh giá
+    - Hiển thị tên khách hàng
+    - Hệ thống duyệt đánh giá (admin)
+
+================================================================================
+                         10. BÁO CÁO & PHÂN TÍCH
+================================================================================
+
+10.1. Thống Kê Dashboard
+    - Doanh thu hôm nay
+    - Tổng đơn hàng hôm nay
+    - Số bàn đang hoạt động
+    - Các chỉ số real-time
+
+10.2. Báo Cáo Doanh Thu
+    - Doanh thu theo khoảng thời gian
+    - Biểu đồ doanh thu theo ngày
+    - Chỉ tính đơn đã hoàn thành
+
+10.3. Phân Tích Thực Đơn
+    - Theo dõi món phổ biến
+    - Chỉ số hiệu suất món ăn
+
+================================================================================
+                         11. QUẢN LÝ NGƯỜI DÙNG & NHÂN VIÊN
+================================================================================
+
+11.1. Quản Lý Nhân Viên (Admin)
+    - Tạo tài khoản nhân viên (Phục vụ, Bếp)
+    - Xem tất cả nhân viên
+    - Cập nhật thông tin nhân viên
+    - Kích hoạt/vô hiệu hóa tài khoản
+    - Gán vai trò
+
+11.2. Quản Lý Người Dùng (Super Admin)
+    - Tạo tài khoản Admin
+    - Truy cập toàn bộ danh sách người dùng
+    - Quản lý quyền hạn
+
+11.3. Quản Lý Khách Hàng
+    - Đăng ký khách hàng
+    - Cập nhật hồ sơ
+    - Tải ảnh đại diện lên Cloudinary
+    - Trạng thái xác thực email
+
+================================================================================
+                         12. TÍNH NĂNG REAL-TIME (Socket.IO)
+================================================================================
+
+12.1. Cập Nhật Đơn Hàng
+    - Thông báo đơn mới đến bếp
+    - Phát sóng thay đổi trạng thái đơn
+    - Cảnh báo yêu cầu thanh toán đến phục vụ
+
+12.2. Giao Tiếp Bếp-Phục Vụ
+    - Thông báo đơn đã sẵn sàng
+    - Cập nhật phục vụ bàn
+
+12.3. Thông Báo Khách Hàng
+    - Xác nhận đơn hàng
+    - Cập nhật trạng thái
+    - Hoàn tất thanh toán
+
+================================================================================
+                         13. TÍNH NĂNG KỸ THUẬT
+================================================================================
+
+13.1. Công Nghệ Backend
+    - Node.js với Express.js
+    - Cơ sở dữ liệu PostgreSQL
+    - Sequelize ORM
+    - Xác thực JWT
+    - Socket.IO cho real-time
+    - Cloudinary cho lưu trữ ảnh
+    - Tạo PDF (pdfkit)
+    - Tạo mã QR (thư viện qrcode)
+
+13.2. Công Nghệ Frontend
+    - React.js với Vite
+    - Tailwind CSS cho styling
+    - Axios cho gọi API
+    - React Router cho điều hướng
+    - Thiết kế responsive (mobile-first)
+
+13.3. Tính Năng Bảo Mật
+    - Mã hóa mật khẩu (bcrypt)
+    - Xác thực token JWT
+    - Phân quyền truy cập theo vai trò
+    - Xác thực token QR
+    - Kiểm tra đầu vào (Joi)
+    - Ngăn chặn SQL injection (Sequelize)
+
+================================================================================
+                         TÓM TẮT
+================================================================================
+
+Hệ Thống Quản Lý Bàn Nhà Hàng Thông Minh này cung cấp giải pháp số hóa 
+toàn diện cho nhà hàng hiện đại với các module chính sau:
+
+1. Hệ thống xác thực đa vai trò
+2. Quản lý bàn với tích hợp mã QR
+3. Quản lý thực đơn toàn diện với tùy chọn bổ sung
+4. Quản lý vòng đời đơn hàng đầy đủ
+5. Hệ thống hiển thị bếp (KDS)
+6. Dashboard phục vụ
+7. Hỗ trợ nhiều phương thức thanh toán
+8. Hệ thống đánh giá khách hàng
+9. Phân tích & báo cáo kinh doanh
+10. Giao tiếp real-time qua WebSockets
+
+Hệ thống hỗ trợ ba giao diện người dùng chính:
+- Cổng Admin (frontend-admin): Quản lý nhân viên nhà hàng
+- Ứng dụng Khách hàng (frontend-customer): Đặt món qua quét QR
+- Giao diện Bếp/Phục vụ: Giao diện chuyên biệt cho vận hành
+
+================================================================================
+                    KẾT THÚC PHÂN TÍCH CHỨC NĂNG
+================================================================================
