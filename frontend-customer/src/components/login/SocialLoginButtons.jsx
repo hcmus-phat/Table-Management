@@ -17,7 +17,7 @@ const SocialLoginButtons = ({
 
     try {
       // Lấy base URL hiện tại
-      const baseUrl = window.location.origin;
+      const baseUrl = import.meta.env.VITE_SITE_URL;
       
       // Tạo redirect URL với ALL query parameters
       let redirectTo = `${baseUrl}/auth/callback`;
