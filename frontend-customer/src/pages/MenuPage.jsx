@@ -496,6 +496,26 @@ const MenuPage = () => {
   const handleCustomize = (item) => setSelectedItem(item);
   const handleViewDetail = (item) => setDetailItem(item);
 
+  // Lấy các món liên quan (cùng category, khác món đang xem)
+  const getRelatedItems = useCallback(
+    (item) => {
+      if (!item?.category?.id) return [];
+
+      // Lấy tất cả món từ tất cả categories
+      const allMenuItems = categories.flatMap((cat) => cat.items || []);
+
+      // Filter món cùng category, loại bỏ món đang xem, giới hạn 6 món
+      return allMenuItems
+        .filter(
+          (menuItem) =>
+            menuItem.category?.id === item.category.id &&
+            menuItem.id !== item.id,
+        )
+        .slice(0, 6);
+    },
+    [categories],
+  );
+
   const handleAddFromDetail = (item) => {
     setDetailItem(null);
     handleCustomize(item);
@@ -618,15 +638,29 @@ const MenuPage = () => {
 
   // --- 5. RENDER ---
 
+  // Kiểm tra xem có đang filter/sort không
+  const hasActiveFilter = searchQuery || chefRecommended || sortBy;
+
   // Tính toán danh sách món theo category đang chọn
   const getCurrentItems = () => {
+    // Nếu đang filter/sort, dùng trực tiếp allItems từ API (đã được sort sẵn)
+    if (hasActiveFilter) {
+      if (activeCategory === "all") {
+        return allItems; // Giữ nguyên thứ tự từ API
+      } else {
+        // Filter theo category nhưng giữ thứ tự sort từ API
+        return allItems.filter((item) => item.category?.id === activeCategory);
+      }
+    }
+
+    // Không có filter -> hiển thị theo category như cũ
     if (activeCategory === "all") {
       // Lấy tất cả món từ tất cả categories
-      return categories.reduce((allItems, category) => {
+      return categories.reduce((acc, category) => {
         if (category.items && category.items.length > 0) {
-          return [...allItems, ...category.items];
+          return [...acc, ...category.items];
         }
-        return allItems;
+        return acc;
       }, []);
     } else {
       // Lấy món từ category được chọn
@@ -778,6 +812,8 @@ const MenuPage = () => {
           item={detailItem}
           onClose={() => setDetailItem(null)}
           onAddToOrder={handleAddFromDetail}
+          relatedItems={detailItem ? getRelatedItems(detailItem) : []}
+          onViewRelatedItem={handleViewDetail}
         />
       </main>
 

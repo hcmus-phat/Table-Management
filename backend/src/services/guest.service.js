@@ -1,4 +1,4 @@
-import { Op, fn, col } from "sequelize";
+import { Op, fn, col, literal } from "sequelize";
 import MenuItem from "../models/menuItem.js";
 import MenuCategory from "../models/menuCategory.js";
 import MenuItemPhoto from "../models/menuItemPhoto.js";
@@ -6,6 +6,7 @@ import ModifierGroup from "../models/modifierGroup.js";
 import ModifierOption from "../models/modifierOption.js";
 import OrderItem from "../models/orderItem.js";
 import Table from "../models/table.js";
+import sequelize from "../config/database.js";
 
 const getGuestMenu = async ({
   tableId,
@@ -48,7 +49,7 @@ const getGuestMenu = async ({
 
   // 3. Build ORDER clause
   let orderClause = [["name", "ASC"]]; // default
-  let sortByPopularity = false;
+  const sortByPopularity = sort === "popularity" || sort === "popularity_desc";
 
   if (sort === "price") {
     orderClause = [["price", "ASC"]];
@@ -56,15 +57,123 @@ const getGuestMenu = async ({
     orderClause = [["price", "DESC"]];
   } else if (sort === "name") {
     orderClause = [["name", "ASC"]];
-  } else if (sort === "popularity" || sort === "popularity_desc") {
-    // Sort by popularity sẽ được xử lý riêng sau khi query
-    sortByPopularity = true;
-    orderClause = [["name", "ASC"]]; // Default fallback
+  } else if (sortByPopularity) {
+    // Sort by popularity sẽ được xử lý bằng subquery
+    orderClause = [["name", "ASC"]]; // Fallback cho items có cùng popularity
   } else if (chefRecommended === "true") {
     orderClause = [["is_chef_recommended", "DESC"]];
   }
 
-  // 4. Query items với pagination
+  // 4. Xử lý riêng cho sort by popularity
+  if (sortByPopularity) {
+    // Lấy popularity count cho tất cả items trước
+    const popularityCounts = await OrderItem.findAll({
+      attributes: ["menu_item_id", [fn("SUM", col("quantity")), "order_count"]],
+      where: {
+        status: { [Op.notIn]: ["cancelled"] },
+      },
+      group: ["menu_item_id"],
+      raw: true,
+    });
+
+    // Tạo map để lookup nhanh
+    const popularityMap = {};
+    popularityCounts.forEach((pc) => {
+      popularityMap[pc.menu_item_id] = parseInt(pc.order_count) || 0;
+    });
+
+    // Query TẤT CẢ items (không pagination) để sort theo popularity
+    const allItems = await MenuItem.findAll({
+      where: itemWhereClause,
+      include: [
+        {
+          model: MenuItemPhoto,
+          as: "photos",
+          required: false,
+          attributes: ["id", "url", "is_primary"],
+        },
+        {
+          model: MenuCategory,
+          as: "category",
+          attributes: ["id", "name"],
+        },
+        {
+          model: ModifierGroup,
+          as: "modifierGroups",
+          through: { attributes: [] },
+          include: [
+            {
+              model: ModifierOption,
+              as: "options",
+              attributes: ["id", "name", "price_adjustment"],
+            },
+          ],
+          attributes: [
+            "id",
+            "name",
+            "selection_type",
+            "is_required",
+            "min_selections",
+            "max_selections",
+          ],
+        },
+      ],
+      order: orderClause,
+    });
+
+    // Format và thêm popularity count
+    let formattedItems = allItems.map((item) => {
+      const actualPrimaryPhoto =
+        item.photos?.find((p) => p.is_primary === true) ||
+        (item.photos && item.photos.length > 0 ? item.photos[0] : null);
+
+      return {
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        price: item.price,
+        is_chef_recommended: item.is_chef_recommended,
+        status: item.status,
+        prep_time_minutes: item.prep_time_minutes,
+        primary_photo: actualPrimaryPhoto,
+        photos: item.photos || [],
+        category: item.category,
+        modifierGroups: item.modifierGroups || [],
+        popularity: popularityMap[item.id] || 0,
+      };
+    });
+
+    // Sort theo popularity (descending - phổ biến nhất lên đầu)
+    formattedItems.sort((a, b) => {
+      if (b.popularity !== a.popularity) {
+        return b.popularity - a.popularity;
+      }
+      // Nếu popularity bằng nhau, sort theo tên
+      return a.name.localeCompare(b.name);
+    });
+
+    // Pagination thủ công SAU KHI đã sort
+    const totalItems = formattedItems.length;
+    const totalPages = Math.ceil(totalItems / limit);
+    const offset = (page - 1) * limit;
+    const paginatedItems = formattedItems.slice(offset, offset + limit);
+
+    return {
+      table,
+      categories,
+      items: paginatedItems,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems,
+        limit,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    };
+  }
+
+  // 5. Query items với pagination (cho các sort khác không phải popularity)
   const offset = (page - 1) * limit;
 
   const { count, rows: items } = await MenuItem.findAndCountAll({
@@ -165,12 +274,7 @@ const getGuestMenu = async ({
     };
   });
 
-  // 7. Sort by popularity nếu được yêu cầu
-  if (sortByPopularity) {
-    formattedItems.sort((a, b) => b.popularity - a.popularity);
-  }
-
-  // 8. Tính pagination info
+  // 7. Tính pagination info
   const totalPages = Math.ceil(count / limit);
 
   return {
